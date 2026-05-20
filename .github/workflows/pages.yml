@@ -1,0 +1,127 @@
+name: Pages
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout docs
+        uses: actions/checkout@v4
+
+      - name: Checkout hsds-dotnet
+        uses: actions/checkout@v4
+        with:
+          repository: TechIndustryX/hsds-dotnet
+          path: sources/hsds-dotnet
+          token: ${{ secrets.DOCS_READ_TOKEN || github.token }}
+
+      - name: Checkout industria4-platform
+        uses: actions/checkout@v4
+        with:
+          repository: TechIndustryX/industria4-platform
+          path: sources/industria4-platform
+          token: ${{ secrets.DOCS_READ_TOKEN || github.token }}
+
+      - name: Checkout opcua-bridge
+        uses: actions/checkout@v4
+        with:
+          repository: TechIndustryX/opcua-bridge
+          path: sources/opcua-bridge
+          token: ${{ secrets.DOCS_READ_TOKEN || github.token }}
+
+      - name: Checkout simatic-wincc-chromium
+        uses: actions/checkout@v4
+        with:
+          repository: TechIndustryX/simatic-wincc-chromium
+          path: sources/simatic-wincc-chromium
+          token: ${{ secrets.DOCS_READ_TOKEN || github.token }}
+
+      - name: Checkout twincat-analytics-collector
+        uses: actions/checkout@v4
+        with:
+          repository: TechIndustryX/twincat-analytics-collector
+          path: sources/twincat-analytics-collector
+          token: ${{ secrets.DOCS_READ_TOKEN || github.token }}
+
+      - name: Checkout twincat-data-streaming
+        uses: actions/checkout@v4
+        with:
+          repository: TechIndustryX/twincat-data-streaming
+          path: sources/twincat-data-streaming
+          token: ${{ secrets.DOCS_READ_TOKEN || github.token }}
+
+      - name: Checkout twincat-hmi-ui-controls
+        uses: actions/checkout@v4
+        with:
+          repository: TechIndustryX/twincat-hmi-ui-controls
+          path: sources/twincat-hmi-ui-controls
+          token: ${{ secrets.DOCS_READ_TOKEN || github.token }}
+
+      - name: Checkout twincat-rpc
+        uses: actions/checkout@v4
+        with:
+          repository: TechIndustryX/twincat-rpc
+          path: sources/twincat-rpc
+          token: ${{ secrets.DOCS_READ_TOKEN || github.token }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            6.0.x
+            8.0.x
+
+      - name: Install DocFX
+        run: dotnet tool update -g docfx
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate references
+        run: npm run references:generate
+        env:
+          SOURCE_ROOT: sources
+
+      - name: Build site
+        run: npm run build
+
+      - name: Setup Pages
+        if: github.event_name == 'push'
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        if: github.event_name == 'push'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build
+
+  deploy:
+    if: github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

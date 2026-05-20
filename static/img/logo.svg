@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" role="img" aria-label="TechIndustry">
+  <rect width="96" height="96" rx="18" fill="#0f766e"/>
+  <path d="M24 28h48v10H54v34H42V38H24V28Z" fill="#fff"/>
+  <path d="M25 64h14v8H25v-8Zm32 0h14v8H57v-8Z" fill="#d1fae5"/>
+</svg>
