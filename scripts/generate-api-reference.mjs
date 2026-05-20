@@ -7,6 +7,7 @@ const sourceRoot = path.resolve(process.env.SOURCE_ROOT ?? '..');
 const docsApiDir = path.join(repoRoot, 'docs', 'references', 'api');
 const staticApiDir = path.join(repoRoot, 'static', 'api');
 const generatedDir = path.join(repoRoot, '.generated');
+const publicBaseUrl = process.env.DOCS_PUBLIC_BASE_URL ?? 'https://techindustryx.github.io/docs';
 
 const repos = [
   {
@@ -170,7 +171,7 @@ function runDocfx(repo, repoPath) {
   try {
     execFileSync('docfx', [configPath], {stdio: 'inherit'});
     if (!ensureDocfxEntryPoint(outputDir)) return null;
-    return `/api/dotnet/${repo.name}/`;
+    return `${publicBaseUrl}/api/dotnet/${repo.name}/`;
   } catch (error) {
     if (process.env.DOCS_STRICT_API === 'true') throw error;
     console.warn(`DocFX failed for ${repo.name}; the API landing page will still be written.`);
