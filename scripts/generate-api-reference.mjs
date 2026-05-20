@@ -8,6 +8,7 @@ const docsApiDir = path.join(repoRoot, 'docs', 'references', 'api');
 const staticApiDir = path.join(repoRoot, 'static', 'api');
 const generatedDir = path.join(repoRoot, '.generated');
 const publicBaseUrl = process.env.DOCS_PUBLIC_BASE_URL ?? 'https://techindustryx.github.io/docs';
+const enableDocfx = process.env.DOCS_ENABLE_DOCFX === 'true';
 
 const repos = [
   {
@@ -137,7 +138,7 @@ function ensureDocfxEntryPoint(outputDir) {
 }
 
 function runDocfx(repo, repoPath) {
-  if (!repo.dotnet?.length || !commandExists('docfx')) return null;
+  if (!enableDocfx || !repo.dotnet?.length || !commandExists('docfx')) return null;
 
   const existing = repo.dotnet.filter((p) => existsSync(path.join(repoPath, p)));
   if (existing.length === 0) return null;
