@@ -112,6 +112,29 @@ function summarizePlc(repoPath) {
   return {count: files.length, byType};
 }
 
+function ensureDocfxEntryPoint(outputDir) {
+  const rootIndex = path.join(outputDir, 'index.html');
+  if (existsSync(rootIndex)) return true;
+
+  const htmlFiles = walk(outputDir, (f) => path.extname(f).toLowerCase() === '.html');
+  if (htmlFiles.length === 0) return false;
+
+  const preferred = htmlFiles.find((f) => path.relative(outputDir, f).split(path.sep).join('/') === 'api/index.html') ?? htmlFiles[0];
+  const target = path.relative(outputDir, preferred).split(path.sep).join('/');
+  writeFileSync(
+    rootIndex,
+    [
+      '<!doctype html>',
+      '<meta charset="utf-8">',
+      `<meta http-equiv="refresh" content="0; url=${target}">`,
+      `<script>window.location.replace(${JSON.stringify(target)});</script>`,
+      `<a href="${target}">Open API reference</a>`,
+      '',
+    ].join('\n'),
+  );
+  return true;
+}
+
 function runDocfx(repo, repoPath) {
   if (!repo.dotnet?.length || !commandExists('docfx')) return null;
 
@@ -146,6 +169,7 @@ function runDocfx(repo, repoPath) {
 
   try {
     execFileSync('docfx', [configPath], {stdio: 'inherit'});
+    if (!ensureDocfxEntryPoint(outputDir)) return null;
     return `/api/dotnet/${repo.name}/`;
   } catch (error) {
     if (process.env.DOCS_STRICT_API === 'true') throw error;
