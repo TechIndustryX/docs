@@ -9,18 +9,13 @@ const cards = [
   },
   {
     title: 'Libraries',
-    description: 'Read library overviews, quickstarts, examples, guides and references.',
+    description: 'Read library overviews, quickstarts, examples, guides and API reference.',
     href: '/libraries/overview',
   },
   {
     title: 'Examples',
     description: 'Follow end-to-end scenarios for HSDS, OPC UA plugins, TwinCAT RPC and streaming dashboards.',
     href: '/examples/overview',
-  },
-  {
-    title: 'References',
-    description: 'Browse packages, containers, repositories, compatibility notes and API documentation.',
-    href: '/references/overview',
   },
 ];
 

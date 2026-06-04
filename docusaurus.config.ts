@@ -79,7 +79,6 @@ const config: Config = {
         {type: 'docSidebar', sidebarId: 'mainSidebar', position: 'left', label: 'Docs'},
         {to: '/getting-started/overview', label: 'Getting Started', position: 'left'},
         {to: '/libraries/overview', label: 'Libraries', position: 'left'},
-        {to: '/references/overview', label: 'References', position: 'left'},
         {href: 'https://github.com/TechIndustryX', label: 'GitHub', position: 'right'},
       ],
     },
@@ -91,14 +90,13 @@ const config: Config = {
           items: [
             {label: 'Getting Started', to: '/getting-started/overview'},
             {label: 'Libraries', to: '/libraries/overview'},
-            {label: 'References', to: '/references/overview'},
           ],
         },
         {
           title: 'Operations',
           items: [
-            {label: 'Packages', to: '/references/packages'},
-            {label: 'Containers', to: '/references/containers'},
+            {label: 'Packages', to: '/getting-started/packages'},
+            {label: 'Containers', to: '/getting-started/containers'},
             {label: 'Release Process', to: '/guides/release-process'},
           ],
         },

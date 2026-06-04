@@ -10,5 +10,3 @@ Runtime services are published to GitHub Container Registry.
 echo "$TOKEN" | docker login ghcr.io -u USERNAME --password-stdin
 docker pull ghcr.io/techindustryx/opcua-bridge:latest
 ```
-
-See [Containers Reference](../references/containers.md) for the image list.

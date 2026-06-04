@@ -16,15 +16,14 @@ flowchart LR
   packages["Packages and releases"] --> quickstarts["Quickstarts"]
   containers["Containers"] --> quickstarts
   quickstarts --> guides["Usage guides"]
-  guides --> refs["References"]
-  refs --> portal["Documentation portal"]
+  guides --> api["Product API Reference"]
+  api --> portal["Documentation portal"]
   portal --> pages["GitHub Pages"]
 ```
 
 ## Main Areas
 
 - **Getting Started**: ecosystem overview, installation, package and container consumption, runtime environment.
-- **Libraries**: one first-level section per component with overview, quickstart, examples, guides and reference.
+- **Libraries**: one first-level section per component with overview, quickstart, examples, guides and API reference.
 - **Guides**: cross-project operating procedures.
 - **Examples**: practical end-to-end scenarios.
-- **References**: repository map, package registry, container registry, glossary and compatibility notes.

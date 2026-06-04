@@ -70,23 +70,6 @@ const sidebars: SidebarsConfig = {
       label: 'TwinCAT RPC',
       items: libraryItems('twincat-rpc'),
     },
-    {
-      type: 'category',
-      label: 'References',
-      link: {type: 'doc', id: 'references/overview'},
-      items: [
-        {
-          type: 'category',
-          label: 'Registries',
-          items: ['references/packages', 'references/containers'],
-        },
-        {
-          type: 'category',
-          label: 'Project Index',
-          items: ['references/repositories', 'references/naming-conventions', 'references/compatibility', 'references/glossary'],
-        },
-      ],
-    },
   ],
 };
 

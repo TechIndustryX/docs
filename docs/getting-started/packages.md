@@ -15,5 +15,3 @@ dotnet nuget add source https://nuget.pkg.github.com/TechIndustryX/index.json \
 ```
 
 The token needs permission to read packages in the organization.
-
-See [Packages Reference](../references/packages.md) for the package list.
