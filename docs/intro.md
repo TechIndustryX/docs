@@ -27,4 +27,4 @@ flowchart LR
 - **Libraries**: one first-level section per component with overview, quickstart, examples, guides and reference.
 - **Guides**: cross-project operating procedures.
 - **Examples**: practical end-to-end scenarios.
-- **References**: repository map, package registry, container registry, glossary, compatibility notes and API references.
+- **References**: repository map, package registry, container registry, glossary and compatibility notes.

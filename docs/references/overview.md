@@ -6,12 +6,6 @@ title: References
 
 Use this section when you need lookup material rather than task-oriented guidance.
 
-## API Reference
-
-Generated API pages are indexed in the documentation sidebar and search. They include C# namespaces, types, constructors, methods, properties and available XML documentation comments, plus protocol or industrial asset inventories where applicable.
-
-- [API Index](./api/index.md)
-
 ## Registries
 
 Use registry references to locate installable artifacts.

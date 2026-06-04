@@ -4,9 +4,11 @@ import path from 'node:path';
 
 const repoRoot = process.cwd();
 const sourceRoot = path.resolve(process.env.SOURCE_ROOT ?? '..');
-const docsApiDir = path.join(repoRoot, 'docs', 'references', 'api');
+const docsLibrariesDir = path.join(repoRoot, 'docs', 'libraries');
+const legacyDocsApiDir = path.join(repoRoot, 'docs', 'references', 'api');
 const staticApiDir = path.join(repoRoot, 'static', 'api');
 const generatedDir = path.join(repoRoot, '.generated');
+const apiSidebarPath = path.join(repoRoot, 'api-sidebars.ts');
 const publicBaseUrl = process.env.DOCS_PUBLIC_BASE_URL ?? 'https://techindustryx.github.io/docs';
 const enableDocfx = process.env.DOCS_ENABLE_DOCFX === 'true';
 
@@ -88,6 +90,14 @@ function safeRead(file) {
   }
 }
 
+function safeJson(file) {
+  try {
+    return JSON.parse(readFileSync(file, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
 function parseProto(file) {
   const text = safeRead(file);
   const services = [...text.matchAll(/service\s+([A-Za-z0-9_]+)/g)].map((m) => m[1]);
@@ -102,6 +112,43 @@ function summarizeHmi(repoPath) {
     manifests: manifests.map((f) => path.relative(repoPath, f)),
     descriptions: descriptions.map((f) => path.relative(repoPath, f)),
   };
+}
+
+function parseHmiControls(repoPath) {
+  const descriptions = walk(repoPath, (f) => path.basename(f) === 'Description.json');
+  return descriptions
+    .map((file) => {
+      const relative = path.relative(repoPath, file);
+      const json = safeJson(file) ?? {};
+      const folderName = path.basename(path.dirname(file));
+      const packageName = relative.split(path.sep)[0] ?? 'TwinCAT HMI';
+      const displayName =
+        json.displayName ??
+        json.name ??
+        json.controlName ??
+        json.controlType ??
+        json.type ??
+        folderName;
+      const description = json.description ?? json.shortDescription ?? json.summary ?? '';
+      const category = json.category ?? json.group ?? packageName;
+      const properties =
+        json.properties ??
+        json.Property ??
+        json.propertyDefinitions ??
+        json.propertyDescriptions ??
+        json.members ??
+        {};
+      return {
+        namespace: packageName,
+        kind: 'control',
+        name: String(displayName),
+        summary: typeof description === 'string' ? description : '',
+        source: relative,
+        category: String(category),
+        properties,
+      };
+    })
+    .sort((a, b) => `${a.namespace}:${a.name}`.localeCompare(`${b.namespace}:${b.name}`));
 }
 
 function summarizePlc(repoPath) {
@@ -145,6 +192,67 @@ function escapeMdxText(value) {
 
 function mdCode(value) {
   return `\`${escapeMdxText(String(value).replace(/`/g, "'"))}\``;
+}
+
+function yamlString(value) {
+  return JSON.stringify(String(value));
+}
+
+function slugify(value) {
+  return (
+    String(value)
+      .replace(/<.*?>/g, '')
+      .replace(/[`'"]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'item'
+  );
+}
+
+function uniqueSlug(base, used) {
+  const clean = slugify(base);
+  let slug = clean;
+  let index = 2;
+  while (used.has(slug)) {
+    slug = `${clean}-${index}`;
+    index += 1;
+  }
+  used.add(slug);
+  return slug;
+}
+
+function makeSlugMap(items, toBase) {
+  const used = new Set();
+  const map = new Map();
+  for (const item of items) map.set(item, uniqueSlug(toBase(item), used));
+  return map;
+}
+
+function docId(...parts) {
+  return parts.join('/').replace(/\.md$/, '').replace(/\/index$/, '/index');
+}
+
+function writeMarkdown(file, title, lines) {
+  mkdirSync(path.dirname(file), {recursive: true});
+  writeFileSync(file, ['---', `title: ${yamlString(title)}`, '---', '', ...lines, ''].join('\n'));
+}
+
+function sidebarDoc(repo, relPath) {
+  return `libraries/${repo.name}/api/${relPath.replace(/\.md$/, '').replace(/\/index$/, '/index')}`;
+}
+
+function displayNamespace(namespaceName) {
+  return namespaceName === '(global)' ? 'Global namespace' : namespaceName;
+}
+
+function memberGroupTitle(kind) {
+  const labels = {
+    constructor: 'Constructors',
+    property: 'Properties',
+    method: 'Methods',
+    event: 'Events',
+  };
+  return labels[kind] ?? `${kind[0].toUpperCase()}${kind.slice(1)}s`;
 }
 
 function parseRecordParameters(typeName, paramsText, source, summary) {
@@ -411,7 +519,244 @@ function runDocfx(repo, repoPath) {
   }
 }
 
-function writeRepoPage(repo) {
+function writeTypePage(repo, apiDir, namespaceSlug, typeSlug, type) {
+  const lines = [
+    `# ${escapeMdxText(type.name)}`,
+    '',
+    `_${escapeMdxText(`${type.access} ${type.kind}`)}_`,
+    '',
+    `Namespace: ${mdCode(type.namespace)}`,
+    '',
+    `Source: ${mdCode(type.source)}`,
+    '',
+  ];
+
+  if (type.summary) lines.push('## Summary', '', escapeMdxText(type.summary), '');
+
+  const order = ['constructor', 'property', 'method', 'event'];
+  const kinds = [...new Set([...order, ...type.members.map((member) => member.kind)])];
+  for (const kind of kinds) {
+    const members = type.members
+      .filter((member) => member.kind === kind)
+      .sort((a, b) => `${a.name}:${a.signature}`.localeCompare(`${b.name}:${b.signature}`));
+    if (!members.length) continue;
+
+    lines.push(`## ${memberGroupTitle(kind)}`, '');
+    for (const member of members) {
+      lines.push(`### ${escapeMdxText(member.name)}`, '', `_${escapeMdxText(member.kind)}_`, '', '```csharp', member.signature, '```', '');
+      if (member.summary) lines.push(escapeMdxText(member.summary), '');
+    }
+  }
+
+  if (!type.members.length) lines.push('No public members were detected for this type.', '');
+  writeMarkdown(path.join(apiDir, namespaceSlug, `${typeSlug}.md`), type.name, lines);
+}
+
+function writeNamespacePage(repo, apiDir, namespaceName, namespaceSlug, types, typeSlugs) {
+  const lines = [
+    `# ${escapeMdxText(displayNamespace(namespaceName))}`,
+    '',
+    `This namespace contains ${types.length} public API ${types.length === 1 ? 'type' : 'types'}.`,
+    '',
+    '## Types',
+    '',
+    ...types
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((type) => {
+        const summary = type.summary ? ` - ${escapeMdxText(type.summary)}` : '';
+        return `- [${escapeMdxText(type.name)}](./${typeSlugs.get(type)}.md) _${escapeMdxText(type.kind)}_${summary}`;
+      }),
+  ];
+
+  writeMarkdown(path.join(apiDir, namespaceSlug, 'index.md'), displayNamespace(namespaceName), lines);
+}
+
+function writeCSharpPages(repo, apiDir, api) {
+  if (!api || !api.types.length) return [];
+
+  const namespaceSlugs = makeSlugMap(api.namespaces, (namespaceName) => (namespaceName === '(global)' ? 'global' : namespaceName));
+  const sidebarItems = [];
+
+  for (const namespaceName of api.namespaces) {
+    const namespaceSlug = namespaceSlugs.get(namespaceName);
+    const types = api.types.filter((type) => type.namespace === namespaceName);
+    const typeSlugs = makeSlugMap(types, (type) => type.name);
+
+    writeNamespacePage(repo, apiDir, namespaceName, namespaceSlug, types, typeSlugs);
+
+    const typeItems = types
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((type) => sidebarDoc(repo, `${namespaceSlug}/${typeSlugs.get(type)}.md`));
+
+    for (const type of types) writeTypePage(repo, apiDir, namespaceSlug, typeSlugs.get(type), type);
+
+    sidebarItems.push({
+      type: 'category',
+      label: displayNamespace(namespaceName),
+      link: {type: 'doc', id: sidebarDoc(repo, `${namespaceSlug}/index.md`)},
+      collapsed: true,
+      items: typeItems,
+    });
+  }
+
+  return sidebarItems;
+}
+
+function writeProtoPages(repo, apiDir, protoSummaries) {
+  if (!protoSummaries.length) return [];
+
+  const dir = path.join(apiDir, 'grpc-contracts');
+  const items = [];
+
+  for (const proto of protoSummaries) {
+    const slug = uniqueSlug(path.basename(proto.path, path.extname(proto.path)), new Set(items.map((item) => item.slug)));
+    const rel = `grpc-contracts/${slug}.md`;
+    const lines = [
+      `# ${escapeMdxText(path.basename(proto.path))}`,
+      '',
+      `Source: ${mdCode(proto.path)}`,
+      '',
+      '## Services',
+      '',
+      ...(proto.services.length ? proto.services.map((service) => `- ${mdCode(service)}`) : ['No services were detected.']),
+      '',
+      '## Messages',
+      '',
+      ...(proto.messages.length ? proto.messages.map((message) => `- ${mdCode(message)}`) : ['No messages were detected.']),
+    ];
+    writeMarkdown(path.join(dir, `${slug}.md`), path.basename(proto.path), lines);
+    items.push({slug, doc: sidebarDoc(repo, rel)});
+  }
+
+  return [
+    {
+      type: 'category',
+      label: 'gRPC Contracts',
+      collapsed: true,
+      items: items.map((item) => item.doc),
+    },
+  ];
+}
+
+function writePlcPages(repo, apiDir, plc) {
+  if (!plc) return [];
+
+  const lines = [
+    '# TwinCAT PLC Assets',
+    '',
+    `Detected ${plc.count} TwinCAT PLC files in the source repository.`,
+    '',
+    '## File Types',
+    '',
+    ...Object.entries(plc.byType)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([type, count]) => `- ${mdCode(type)}: ${count}`),
+  ];
+
+  writeMarkdown(path.join(apiDir, 'twincat-plc-assets.md'), 'TwinCAT PLC Assets', lines);
+  return [sidebarDoc(repo, 'twincat-plc-assets.md')];
+}
+
+function propertyEntries(properties) {
+  if (Array.isArray(properties)) {
+    return properties
+      .map((property) => {
+        if (typeof property === 'string') return {name: property, description: ''};
+        const name = property.name ?? property.propertyName ?? property.id ?? property.displayName;
+        const description = property.description ?? property.summary ?? property.displayName ?? '';
+        return name ? {name: String(name), description: String(description)} : null;
+      })
+      .filter(Boolean);
+  }
+
+  if (properties && typeof properties === 'object') {
+    return Object.entries(properties).map(([name, value]) => {
+      const description =
+        value && typeof value === 'object'
+          ? (value.description ?? value.summary ?? value.displayName ?? value.type ?? '')
+          : String(value ?? '');
+      return {name, description: String(description)};
+    });
+  }
+
+  return [];
+}
+
+function writeHmiControlPage(repo, apiDir, namespaceSlug, controlSlug, control) {
+  const properties = propertyEntries(control.properties);
+  const lines = [
+    `# ${escapeMdxText(control.name)}`,
+    '',
+    '_TwinCAT HMI control_',
+    '',
+    `Package: ${mdCode(control.namespace)}`,
+    '',
+    `Category: ${mdCode(control.category)}`,
+    '',
+    `Source: ${mdCode(control.source)}`,
+    '',
+  ];
+
+  if (control.summary) lines.push('## Summary', '', escapeMdxText(control.summary), '');
+
+  lines.push('## Properties', '');
+  if (properties.length) {
+    for (const property of properties.sort((a, b) => a.name.localeCompare(b.name))) {
+      const description = property.description ? ` - ${escapeMdxText(property.description)}` : '';
+      lines.push(`- ${mdCode(property.name)}${description}`);
+    }
+  } else {
+    lines.push('No public control properties were detected from the description file.');
+  }
+
+  writeMarkdown(path.join(apiDir, namespaceSlug, `${controlSlug}.md`), control.name, lines);
+}
+
+function writeHmiPages(repo, apiDir, controls) {
+  if (!controls.length) return [];
+
+  const namespaces = [...new Set(controls.map((control) => control.namespace))].sort();
+  const namespaceSlugs = makeSlugMap(namespaces, (namespaceName) => namespaceName);
+  const sidebarItems = [];
+
+  for (const namespaceName of namespaces) {
+    const namespaceSlug = namespaceSlugs.get(namespaceName);
+    const namespaceControls = controls.filter((control) => control.namespace === namespaceName);
+    const controlSlugs = makeSlugMap(namespaceControls, (control) => control.name);
+
+    const namespaceLines = [
+      `# ${escapeMdxText(namespaceName)}`,
+      '',
+      `This package contains ${namespaceControls.length} TwinCAT HMI ${namespaceControls.length === 1 ? 'control' : 'controls'}.`,
+      '',
+      '## Controls',
+      '',
+      ...namespaceControls
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((control) => {
+          const summary = control.summary ? ` - ${escapeMdxText(control.summary)}` : '';
+          return `- [${escapeMdxText(control.name)}](./${controlSlugs.get(control)}.md)${summary}`;
+        }),
+    ];
+    writeMarkdown(path.join(apiDir, namespaceSlug, 'index.md'), namespaceName, namespaceLines);
+
+    for (const control of namespaceControls) writeHmiControlPage(repo, apiDir, namespaceSlug, controlSlugs.get(control), control);
+
+    sidebarItems.push({
+      type: 'category',
+      label: namespaceName,
+      link: {type: 'doc', id: sidebarDoc(repo, `${namespaceSlug}/index.md`)},
+      collapsed: true,
+      items: namespaceControls
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((control) => sidebarDoc(repo, `${namespaceSlug}/${controlSlugs.get(control)}.md`)),
+    });
+  }
+
+  return sidebarItems;
+}
+
+function writeRepoApi(repo) {
   const repoPath = path.join(sourceRoot, repo.name);
   const present = existsSync(repoPath);
   const docfxUrl = present ? runDocfx(repo, repoPath) : null;
@@ -422,13 +767,20 @@ function writeRepoPage(repo) {
         .map((p) => ({path: p, ...parseProto(path.join(repoPath, p))}))
     : [];
   const plc = present && repo.plc ? summarizePlc(repoPath) : null;
-  const hmi = present && repo.hmi ? summarizeHmi(repoPath) : null;
+  const hmiControls = present && repo.hmi ? parseHmiControls(repoPath) : [];
+  const apiDir = path.join(docsLibrariesDir, repo.name, 'api');
+
+  rmSync(apiDir, {recursive: true, force: true});
+  mkdirSync(apiDir, {recursive: true});
+
+  const sidebarItems = [
+    ...writeCSharpPages(repo, apiDir, csharpApi),
+    ...writeHmiPages(repo, apiDir, hmiControls),
+    ...writeProtoPages(repo, apiDir, protoSummaries),
+    ...writePlcPages(repo, apiDir, plc),
+  ];
 
   const lines = [
-    '---',
-    `title: ${repo.title}`,
-    '---',
-    '',
     `# ${repo.title} API Reference`,
     '',
     `Source repository: \`TechIndustryX/${repo.name}\``,
@@ -439,56 +791,74 @@ function writeRepoPage(repo) {
     lines.push('> Source checkout not found. The CI workflow checks out this repository before building the site.', '');
   }
 
-  if (csharpApi) {
-    writeCSharpApi(lines, csharpApi);
+  if (csharpApi?.types.length) {
+    lines.push(
+      '## .NET API',
+      '',
+      `Detected ${csharpApi.types.length} public C# types and ${csharpApi.memberCount} members across ${csharpApi.namespaces.length} namespaces.`,
+      '',
+      '## Namespaces',
+      '',
+      ...csharpApi.namespaces.map((namespaceName) => {
+        const namespaceSlug = slugify(namespaceName === '(global)' ? 'global' : namespaceName);
+        return `- [${escapeMdxText(displayNamespace(namespaceName))}](./${namespaceSlug}/index.md)`;
+      }),
+      '',
+    );
     if (docfxUrl) {
       lines.push('Additional DocFX output:', '', `- [Open rendered .NET API reference](${docfxUrl})`, '');
     }
   } else if (repo.dotnet?.length) {
-    lines.push('## .NET API', '', 'Reference extraction is configured for:', '', ...repo.dotnet.map((p) => `- \`${p}\``), '');
+    lines.push('## .NET API', '', 'No public C# API surface was detected from the checked-out source.', '');
   }
 
   if (protoSummaries.length) {
-    lines.push('## gRPC / Protobuf', '');
+    lines.push('## gRPC Contracts', '');
     for (const proto of protoSummaries) {
-      lines.push(`### ${proto.path}`, '');
-      lines.push('Services:', '', ...(proto.services.length ? proto.services.map((s) => `- \`${s}\``) : ['- None detected']), '');
-      lines.push('Messages:', '', ...(proto.messages.length ? proto.messages.map((m) => `- \`${m}\``) : ['- None detected']), '');
+      const slug = slugify(path.basename(proto.path, path.extname(proto.path)));
+      lines.push(`- [${escapeMdxText(path.basename(proto.path))}](./grpc-contracts/${slug}.md)`);
     }
-  }
-
-  if (plc) {
-    lines.push('## TwinCAT PLC Inventory', '', `Detected ${plc.count} PLC files.`, '');
-    for (const [type, count] of Object.entries(plc.byType)) lines.push(`- \`${type}\`: ${count}`);
     lines.push('');
   }
 
-  if (hmi) {
-    lines.push('## TwinCAT HMI Inventory', '', 'Manifests:', '', ...(hmi.manifests.length ? hmi.manifests.map((p) => `- \`${p}\``) : ['- None detected']), '');
-    lines.push('Descriptions:', '', ...(hmi.descriptions.length ? hmi.descriptions.map((p) => `- \`${p}\``) : ['- None detected']), '');
+  if (plc) {
+    lines.push('## TwinCAT PLC Assets', '', `Detected ${plc.count} PLC files.`, '', '- [TwinCAT PLC Assets](./twincat-plc-assets.md)', '');
   }
 
-  writeFileSync(path.join(docsApiDir, `${repo.name}.md`), `${lines.join('\n')}\n`);
+  if (hmiControls.length) {
+    lines.push(
+      '## TwinCAT HMI Controls',
+      '',
+      `Detected ${hmiControls.length} controls across ${new Set(hmiControls.map((control) => control.namespace)).size} packages.`,
+      '',
+      ...[...new Set(hmiControls.map((control) => control.namespace))]
+        .sort()
+        .map((namespaceName) => `- [${escapeMdxText(namespaceName)}](./${slugify(namespaceName)}/index.md)`),
+      '',
+    );
+  }
+
+  if (!sidebarItems.length) {
+    lines.push('No API artifacts were detected from the checked-out source.', '');
+  }
+
+  writeMarkdown(path.join(apiDir, 'index.md'), `${repo.title} API Reference`, lines);
+  return sidebarItems;
 }
 
 rmSync(generatedDir, {recursive: true, force: true});
-mkdirSync(docsApiDir, {recursive: true});
+rmSync(legacyDocsApiDir, {recursive: true, force: true});
 mkdirSync(staticApiDir, {recursive: true});
 
-for (const repo of repos) writeRepoPage(repo);
+const apiSidebars = {};
+for (const repo of repos) apiSidebars[repo.name] = writeRepoApi(repo);
 
-const index = [
-  '---',
-  'title: API Index',
-  '---',
-  '',
-  '# API Index',
-  '',
-  'This page lists API reference entry points for the TechIndustry repositories.',
-  '',
-  ...repos.map((repo) => `- [${repo.title}](./${repo.name}.md)`),
-  '',
-].join('\n');
+writeFileSync(
+  apiSidebarPath,
+  [
+    `export const apiSidebars: Record<string, any[]> = ${JSON.stringify(apiSidebars, null, 2)};`,
+    '',
+  ].join('\n'),
+);
 
-writeFileSync(path.join(docsApiDir, 'index.md'), index);
 console.log(`Wrote API reference pages from ${sourceRoot}`);

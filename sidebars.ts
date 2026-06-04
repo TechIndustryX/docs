@@ -1,22 +1,19 @@
 import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
+import {apiSidebars} from './api-sidebars';
 
-const libraryItems = (id: string) => [
+type LibraryId = keyof typeof apiSidebars;
+
+const libraryItems = (id: LibraryId) => [
   `libraries/${id}/overview`,
   `libraries/${id}/quickstart`,
   `libraries/${id}/examples`,
   `libraries/${id}/guides`,
-  `libraries/${id}/reference`,
-];
-
-const referenceApiItems = [
-  'references/api/hsds-dotnet',
-  'references/api/industria4-platform',
-  'references/api/opcua-bridge',
-  'references/api/simatic-wincc-chromium',
-  'references/api/twincat-analytics-collector',
-  'references/api/twincat-data-streaming',
-  'references/api/twincat-hmi-ui-controls',
-  'references/api/twincat-rpc',
+  {
+    type: 'category' as const,
+    label: 'API Reference',
+    link: {type: 'doc' as const, id: `libraries/${id}/api/index`},
+    items: apiSidebars[id] ?? [],
+  },
 ];
 
 const sidebars: SidebarsConfig = {
@@ -78,12 +75,6 @@ const sidebars: SidebarsConfig = {
       label: 'References',
       link: {type: 'doc', id: 'references/overview'},
       items: [
-        {
-          type: 'category',
-          label: 'API Reference',
-          link: {type: 'doc', id: 'references/api/index'},
-          items: referenceApiItems,
-        },
         {
           type: 'category',
           label: 'Registries',

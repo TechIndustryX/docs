@@ -1,0 +1,17 @@
+---
+title: "LiveSvg"
+---
+
+# LiveSvg
+
+_TwinCAT HMI control_
+
+Package: `TechIndustry.TcHmi.Controls`
+
+Category: `TechIndustry.TcHmi.Controls`
+
+Source: `TechIndustry.TcHmi.Controls/LiveSvg/Description.json`
+
+## Properties
+
+No public control properties were detected from the description file.
