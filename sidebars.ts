@@ -8,6 +8,17 @@ const libraryItems = (id: string) => [
   `libraries/${id}/reference`,
 ];
 
+const referenceApiItems = [
+  'references/api/hsds-dotnet',
+  'references/api/industria4-platform',
+  'references/api/opcua-bridge',
+  'references/api/simatic-wincc-chromium',
+  'references/api/twincat-analytics-collector',
+  'references/api/twincat-data-streaming',
+  'references/api/twincat-hmi-ui-controls',
+  'references/api/twincat-rpc',
+];
+
 const sidebars: SidebarsConfig = {
   mainSidebar: [
     'intro',
@@ -61,6 +72,29 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'TwinCAT RPC',
       items: libraryItems('twincat-rpc'),
+    },
+    {
+      type: 'category',
+      label: 'References',
+      link: {type: 'doc', id: 'references/overview'},
+      items: [
+        {
+          type: 'category',
+          label: 'API Reference',
+          link: {type: 'doc', id: 'references/api/index'},
+          items: referenceApiItems,
+        },
+        {
+          type: 'category',
+          label: 'Registries',
+          items: ['references/packages', 'references/containers'],
+        },
+        {
+          type: 'category',
+          label: 'Project Index',
+          items: ['references/repositories', 'references/naming-conventions', 'references/compatibility', 'references/glossary'],
+        },
+      ],
     },
   ],
 };

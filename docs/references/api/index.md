@@ -4,7 +4,7 @@ title: API Index
 
 # API Index
 
-This page lists API reference entry points for the TechIndustry repositories.
+API reference pages are generated from the checked-out repositories during the documentation workflow and are indexed by site search.
 
 - [HSDS .NET](./hsds-dotnet.md)
 - [Industria4 Platform](./industria4-platform.md)
