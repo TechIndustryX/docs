@@ -90,9 +90,6 @@ jobs:
             6.0.x
             8.0.x
 
-      - name: Install DocFX
-        run: dotnet tool update -g docfx
-
       - name: Install dependencies
         run: npm ci
 
@@ -100,7 +97,6 @@ jobs:
         run: npm run references:generate
         env:
           SOURCE_ROOT: sources
-          DOCS_ENABLE_DOCFX: 'true'
 
       - name: Build site
         run: npm run build

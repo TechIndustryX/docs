@@ -114,6 +114,237 @@ function summarizePlc(repoPath) {
   return {count: files.length, byType};
 }
 
+function cleanXmlDoc(lines) {
+  if (!lines.length) return '';
+  const text = lines
+    .join('\n')
+    .replace(/<see(?:\s+cref="[^"]+")?\s*\/>/g, '')
+    .replace(/<see(?:\s+cref="([^"]+)")?\s*>(.*?)<\/see>/g, '$1$2')
+    .replace(/<paramref\s+name="([^"]+)"\s*\/>/g, '`$1`')
+    .replace(/<typeparamref\s+name="([^"]+)"\s*\/>/g, '`$1`')
+    .replace(/<c>(.*?)<\/c>/gs, '`$1`')
+    .replace(/<code>(.*?)<\/code>/gs, '`$1`')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return text;
+}
+
+function normalizeSignature(signature) {
+  return signature.replace(/\s+/g, ' ').replace(/\s+([,>)])/g, '$1').replace(/([(<,])\s+/g, '$1').trim();
+}
+
+function escapeMdxText(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/{/g, '&#123;')
+    .replace(/}/g, '&#125;');
+}
+
+function mdCode(value) {
+  return `\`${escapeMdxText(String(value).replace(/`/g, "'"))}\``;
+}
+
+function parseRecordParameters(typeName, paramsText, source, summary) {
+  if (!paramsText?.trim()) return [];
+  return paramsText
+    .split(',')
+    .map((part) => part.trim())
+    .map((part) => {
+      const match = part.match(/^(?:\[[^\]]+\]\s*)*(.+?)\s+([A-Za-z_]\w*)$/);
+      if (!match) return null;
+      return {
+        kind: 'property',
+        access: 'public',
+        name: match[2],
+        signature: `${match[1]} ${match[2]}`,
+        summary: summary ? `Record parameter on ${typeName}.` : '',
+        source,
+      };
+    })
+    .filter(Boolean);
+}
+
+function parseCSharpApi(repoPath) {
+  const files = walk(
+    repoPath,
+    (f) =>
+      path.extname(f).toLowerCase() === '.cs' &&
+      !/([/\\])(bin|obj|node_modules|Migrations)([/\\])/.test(f) &&
+      !/(AssemblyInfo|GlobalUsings|\.Designer)\.cs$/i.test(path.basename(f)),
+  );
+
+  const types = [];
+
+  for (const file of files) {
+    const relative = path.relative(repoPath, file);
+    const lines = safeRead(file).replace(/^\uFEFF/, '').split(/\r?\n/);
+    let namespaceName = '(global)';
+    let currentType = null;
+    let pendingDocs = [];
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (line.startsWith('///')) {
+        pendingDocs.push(line.replace(/^\/\/\/\s?/, ''));
+        continue;
+      }
+
+      if (!line || line.startsWith('//') || line.startsWith('[')) continue;
+
+      const namespaceMatch = line.match(/^namespace\s+([A-Za-z_][\w.]+)/);
+      if (namespaceMatch) {
+        namespaceName = namespaceMatch[1];
+        pendingDocs = [];
+        continue;
+      }
+
+      const typeMatch = line.match(
+        /^(public|internal|protected|private)?\s*(?:(?:static|abstract|sealed|partial|readonly|unsafe|new)\s+)*(class|interface|record|struct|enum)\s+([A-Za-z_]\w*(?:<[^>{};()]+>)?)(?:\s*\(([^;{]*)\))?/,
+      );
+      if (typeMatch) {
+        const summary = cleanXmlDoc(pendingDocs);
+        const type = {
+          namespace: namespaceName,
+          access: typeMatch[1] ?? 'internal',
+          kind: typeMatch[2],
+          name: typeMatch[3],
+          summary,
+          source: relative,
+          members: [],
+        };
+        if (type.kind === 'record') {
+          type.members.push(...parseRecordParameters(type.name, typeMatch[4], relative, summary));
+        }
+        types.push(type);
+        currentType = type;
+        pendingDocs = [];
+        continue;
+      }
+
+      if (!currentType) {
+        pendingDocs = [];
+        continue;
+      }
+
+      const accessPrefix = /^(public|protected|internal|private)\s+/;
+      if (!accessPrefix.test(line)) {
+        if (!line.startsWith('{') && !line.startsWith('}')) pendingDocs = [];
+        continue;
+      }
+
+      const constructorPattern = new RegExp(`^(public|protected|internal|private)\\s+${currentType.name.replace(/<.*$/, '')}\\s*\\(([^)]*)\\)`);
+      const constructorMatch = line.match(constructorPattern);
+      if (constructorMatch) {
+        currentType.members.push({
+          kind: 'constructor',
+          access: constructorMatch[1],
+          name: currentType.name.replace(/<.*$/, ''),
+          signature: normalizeSignature(`${currentType.name.replace(/<.*$/, '')}(${constructorMatch[2]})`),
+          summary: cleanXmlDoc(pendingDocs),
+          source: relative,
+        });
+        pendingDocs = [];
+        continue;
+      }
+
+      const eventMatch = line.match(
+        /^(public|protected|internal|private)\s+(?:(?:static|virtual|override|abstract|sealed|new)\s+)*event\s+(.+?)\s+([A-Za-z_]\w*)\s*(?:;|\{|=>)/,
+      );
+      if (eventMatch) {
+        currentType.members.push({
+          kind: 'event',
+          access: eventMatch[1],
+          name: eventMatch[3],
+          signature: normalizeSignature(`event ${eventMatch[2]} ${eventMatch[3]}`),
+          summary: cleanXmlDoc(pendingDocs),
+          source: relative,
+        });
+        pendingDocs = [];
+        continue;
+      }
+
+      const methodMatch = line.match(
+        /^(public|protected|internal|private)\s+(?:(?:static|async|virtual|override|abstract|sealed|partial|extern|new|unsafe)\s+)*(.+?)\s+([A-Za-z_]\w*)\s*(<[^>]+>)?\s*\(([^)]*)\)/,
+      );
+      if (
+        methodMatch &&
+        !['if', 'for', 'foreach', 'while', 'switch', 'catch', 'using', 'new'].includes(methodMatch[3]) &&
+        !/[=<>]/.test(methodMatch[2].replace(/<[^>]+>/g, ''))
+      ) {
+        currentType.members.push({
+          kind: 'method',
+          access: methodMatch[1],
+          name: methodMatch[3],
+          signature: normalizeSignature(`${methodMatch[2]} ${methodMatch[3]}${methodMatch[4] ?? ''}(${methodMatch[5]})`),
+          summary: cleanXmlDoc(pendingDocs),
+          source: relative,
+        });
+        pendingDocs = [];
+        continue;
+      }
+
+      const propertyMatch = line.match(
+        /^(public|protected|internal|private)\s+(?:(?:static|virtual|override|abstract|sealed|new|readonly|required)\s+)*(.+?)\s+([A-Za-z_]\w*)\s*(?:\{|=>)/,
+      );
+      if (propertyMatch && !propertyMatch[2].includes('(')) {
+        currentType.members.push({
+          kind: 'property',
+          access: propertyMatch[1],
+          name: propertyMatch[3],
+          signature: normalizeSignature(`${propertyMatch[2]} ${propertyMatch[3]}`),
+          summary: cleanXmlDoc(pendingDocs),
+          source: relative,
+        });
+        pendingDocs = [];
+        continue;
+      }
+
+      pendingDocs = [];
+    }
+  }
+
+  const publicTypes = types.filter((type) => type.access !== 'private');
+  for (const type of publicTypes) {
+    type.members = type.members.filter((member) => member.access !== 'private');
+  }
+  const memberCount = publicTypes.reduce((sum, type) => sum + type.members.length, 0);
+  const namespaces = [...new Set(publicTypes.map((type) => type.namespace))].sort();
+  return {files: files.length, namespaces, types: publicTypes, memberCount};
+}
+
+function writeCSharpApi(lines, api) {
+  lines.push(
+    '## .NET API',
+    '',
+    `Detected ${api.types.length} C# types and ${api.memberCount} members across ${api.namespaces.length} namespaces.`,
+    '',
+  );
+
+  if (api.types.length === 0) {
+    lines.push('No C# API surface was detected from the checked-out source.', '');
+    return;
+  }
+
+  for (const namespaceName of api.namespaces) {
+    lines.push(`### ${mdCode(namespaceName)}`, '');
+    for (const type of api.types.filter((item) => item.namespace === namespaceName).sort((a, b) => a.name.localeCompare(b.name))) {
+      lines.push(`#### ${mdCode(type.name)}`, '', `_${type.access} ${type.kind}_`, '', `Source: ${mdCode(type.source)}`, '');
+      if (type.summary) lines.push(escapeMdxText(type.summary), '');
+      if (type.members.length) {
+        lines.push('Members:', '');
+        for (const member of type.members.sort((a, b) => `${a.kind}:${a.name}`.localeCompare(`${b.kind}:${b.name}`))) {
+          const summary = member.summary ? ` — ${escapeMdxText(member.summary)}` : '';
+          lines.push(`- ${mdCode(member.signature)} _${member.kind}_${summary}`);
+        }
+        lines.push('');
+      }
+    }
+  }
+}
+
 function ensureDocfxEntryPoint(outputDir) {
   const rootIndex = path.join(outputDir, 'index.html');
   if (existsSync(rootIndex)) return true;
@@ -184,6 +415,7 @@ function writeRepoPage(repo) {
   const repoPath = path.join(sourceRoot, repo.name);
   const present = existsSync(repoPath);
   const docfxUrl = present ? runDocfx(repo, repoPath) : null;
+  const csharpApi = present && repo.dotnet?.length ? parseCSharpApi(repoPath) : null;
   const protoSummaries = present
     ? (repo.proto ?? [])
         .filter((p) => existsSync(path.join(repoPath, p)))
@@ -207,10 +439,13 @@ function writeRepoPage(repo) {
     lines.push('> Source checkout not found. The CI workflow checks out this repository before building the site.', '');
   }
 
-  if (docfxUrl) {
-    lines.push('## .NET API', '', `DocFX output: [open .NET API reference](${docfxUrl})`, '');
+  if (csharpApi) {
+    writeCSharpApi(lines, csharpApi);
+    if (docfxUrl) {
+      lines.push('Additional DocFX output:', '', `- [Open rendered .NET API reference](${docfxUrl})`, '');
+    }
   } else if (repo.dotnet?.length) {
-    lines.push('## .NET API', '', 'DocFX is configured for:', '', ...repo.dotnet.map((p) => `- \`${p}\``), '');
+    lines.push('## .NET API', '', 'Reference extraction is configured for:', '', ...repo.dotnet.map((p) => `- \`${p}\``), '');
   }
 
   if (protoSummaries.length) {
