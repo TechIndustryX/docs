@@ -113,7 +113,7 @@ const config: Config = {
     prism: {
       theme: prismThemes.github,
       darkTheme: prismThemes.oneDark,
-      additionalLanguages: ['csharp', 'powershell', 'json', 'yaml', 'bash'],
+      additionalLanguages: ['csharp', 'markup-templating', 'cshtml', 'powershell', 'json', 'yaml', 'bash'],
     },
   } satisfies Preset.ThemeConfig,
 };

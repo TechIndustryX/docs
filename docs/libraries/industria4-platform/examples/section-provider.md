@@ -31,7 +31,7 @@ public sealed class SectionsProvider : ISectionsProvider
 
 ## Section Component
 
-```razor title="MyFeatureWorkOrderPanel.razor"
+```cshtml title="MyFeatureWorkOrderPanel.razor"
 @inject MyFeatureViewModel ViewModel
 
 <div class="card">
@@ -63,7 +63,7 @@ public sealed class SectionsProvider : ISectionsProvider
 
 The host page renders the section by name. For example, a work-order page can expose an extension point like this:
 
-```razor title="WorkOrder.razor"
+```cshtml title="WorkOrder.razor"
 @* Context gives injected components access to the host screen model. *@
 <SectionPlaceholder<WorkOrderViewModel>
     Name="Mes.WorkOrder.InnerGeneral"

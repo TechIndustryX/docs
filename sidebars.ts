@@ -24,6 +24,7 @@ const libraryExamples = {
     'backend-module',
     'frontend-module',
     'module-definition',
+    'module-packaging',
     'dependency-injection',
     'section-provider',
     'webforms-controls',
@@ -90,7 +91,6 @@ const libraryItems = (id: LibraryId) => [
     link: {type: 'doc' as const, id: `libraries/${id}/examples/index`},
     items: libraryExamples[id].map((example) => `libraries/${id}/examples/${example}`),
   },
-  `libraries/${id}/guides`,
   {
     type: 'category' as const,
     label: 'API Reference',
