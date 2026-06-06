@@ -17,9 +17,11 @@ The shared components include layout helpers, form rows, selection controls, loa
 @inject MyItemViewModel ViewModel
 @inject IDialogService Dialogs
 
+@* Loading listens to ILoadingService; the view model can trigger it without UI coupling. *@
 <Loading />
 
 <EditForm Model="@ViewModel.Item" OnValidSubmit="@ViewModel.SaveAsync">
+    @* Standard Blazor validation works with the platform input controls. *@
     <DataAnnotationsValidator />
 
     <RowInput Label="Code">
@@ -53,10 +55,12 @@ The shared components include layout helpers, form rows, selection controls, loa
 <Loading />
 
 <DataGrid Items="@ViewModel.Items" RowSelected="@ViewModel.OpenAsync">
+    @* Property columns keep sorting and display metadata tied to the read model. *@
     <DataGridPropertyColumn Property="@(x => x.Code)" Title="Code" />
     <DataGridPropertyColumn Property="@(x => x.Description)" Title="Description" />
 </DataGrid>
 
+@* Keep paging state in the view model so refreshes preserve the current page. *@
 <DataGridPaginator State="@ViewModel.Pagination" />
 ```
 
@@ -67,10 +71,12 @@ public sealed class MyItemsViewModel(IDialogService dialogs)
 {
     public async Task DeleteAsync(string id)
     {
+        // Confirm destructive actions through the shared dialog service.
         var confirmed = await dialogs.ConfirmAsync(
             "Delete item",
             "Do you want to delete this item?");
 
+        // Returning early keeps the command path explicit and easy to test.
         if (!confirmed) return;
 
         await Client.DeleteAsync(id);

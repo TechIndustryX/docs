@@ -34,12 +34,16 @@ namespace Industria4.MyFeature.WebApi.Hosting;
 
 public sealed class WebApiModule : ProcessModule
 {
+    // Display name shown by the host while managing this child process.
     public override string Name => "My Feature API";
 
+    // Executable produced by the API project publish/build output.
     public override string ProcessNameExe => "Industria4.MyFeature.WebApi.exe";
 
+    // MES-style packages keep the executable under a bin folder.
     public override string WorkingDir => Path.Combine(base.WorkingDir, "bin");
 
+    // Every key under Packages:MyFeature.WebApi becomes an environment variable.
     public override IDictionary<string, string> Environment =>
         Configuration.GetEnvironmentVariablesFromSection("Packages:MyFeature.WebApi");
 
@@ -65,9 +69,11 @@ public sealed class StartupService : IStartupService, ICatalogContextAccessor
 {
     public void ConfigureServices(IConfiguration configuration, IServiceCollection services)
     {
+        // Registers the process module in the host catalog discovered at startup.
         services.AddModule<WebApiModule>(this);
     }
 
+    // The host fills this context when it loads the package metadata.
     CatalogContext ICatalogContextAccessor.CatalogContext { get; set; }
 }
 ```

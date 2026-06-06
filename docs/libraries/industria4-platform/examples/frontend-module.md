@@ -62,22 +62,27 @@ public sealed class MyFeatureModule : IClientModule
 
     public async Task LoadAsync(CancellationToken cancellationToken)
     {
+        // Rebuild menu entries when the authenticated user changes.
         _authenticationStateProvider.AuthenticationStateChanged +=
             async state => await PopulateMenuItemsAsync(await state);
 
+        // Populate the menu immediately for the current session.
         var authenticationState = await _authenticationStateProvider.GetAuthenticationStateAsync();
         await PopulateMenuItemsAsync(authenticationState);
     }
 
     private async Task PopulateMenuItemsAsync(AuthenticationState authenticationState)
     {
+        // Keep the navigation aligned with backend/API authorization policies.
         if ((await _authorizationService.AuthorizeAsync(
                 authenticationState.User,
                 "MyFeature.Items")).Succeeded)
         {
             _menuService.Items.Add(new LanguageMenuItem(_languageContext, "MyFeature_Title", _localizer)
             {
+                // Prefix keeps child pages highlighted under the same menu entry.
                 Match = NavLinkMatch.Prefix,
+                // HrefType lets the platform resolve the route from the component.
                 HrefType = typeof(Views.MyItems),
                 Icon = "far fa-list-alt"
             });
@@ -99,6 +104,7 @@ public sealed class DynamicRouteBuilderProvider : IDynamicRouteBuilderProvider
 {
     public IEnumerable<Type> GetTypes()
     {
+        // Return every routable component owned by this module.
         return new[]
         {
             typeof(Views.MyItems),
@@ -124,16 +130,24 @@ public sealed class StartupService : IStartupService
 {
     public void ConfigureServices(IConfiguration configuration, IServiceCollection services)
     {
+        // The same package can be loaded server-side; IMenuService exists only in the Blazor client.
         var isClient = services.Any(s => s.ServiceType == typeof(IMenuService));
         if (!isClient) return;
 
+        // Register localization before menu labels are created.
         services.AddResourceProvider(Localization.ResourceManager);
+
+        // View models are transient because they hold page-level state.
         services.AddTransient<MyItemsViewModel>();
         services.AddTransient<MyItemViewModel>();
 
         services.Configure<MyFeatureOptions>(configuration.GetSection("MyFeature"));
+
+        // Dynamic routes and the module loader are separate registrations.
         services.AddDynamicRouteBuilderProvider<DynamicRouteBuilderProvider>();
         services.AddModule<MyFeatureModule>();
+
+        // Typed HTTP clients keep API URLs out of Razor components.
         services.AddHttpMyFeature();
 
         services.Configure<HttpMyFeatureOptions>(configuration.GetSection("Http"));

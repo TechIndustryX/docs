@@ -20,9 +20,11 @@ public sealed class StartupService : IStartupService, ICatalogContextAccessor
 {
     public void ConfigureServices(IConfiguration configuration, IServiceCollection services)
     {
+        // Adds the backend process module to the platform module catalog.
         services.AddModule<WebApiModule>(this);
     }
 
+    // Required by the host to attach package/catalog metadata to this startup service.
     CatalogContext ICatalogContextAccessor.CatalogContext { get; set; }
 }
 ```
@@ -34,6 +36,7 @@ This registers the backend process module into the hosting catalog.
 ```csharp title="MyFeature.WebApi/Startup.cs"
 public void ConfigureServices(IServiceCollection services)
 {
+    // Handlers can depend on ClaimsPrincipal without touching HttpContext directly.
     services.AddScoped(p =>
         p.GetRequiredService<IHttpContextAccessor>().HttpContext?.User
         ?? new ClaimsPrincipal());
@@ -41,6 +44,7 @@ public void ConfigureServices(IServiceCollection services)
     services.AddCorrelation();
     services.AddMyFeatureEntityFramework(options =>
     {
+        // Keep the actual connection string injectable by deployment environment.
         var connectionString = Environment.ExpandEnvironmentVariables(
             Configuration.GetConnectionString("MyFeature"));
         options.UseSqlServer(connectionString);
@@ -48,17 +52,20 @@ public void ConfigureServices(IServiceCollection services)
 
     services.AddServiceBus(bus =>
     {
+        // Routing, handlers and queue selection are configured together per feature.
         bus.AddMyFeatureCommandsRoute();
         bus.AddMyFeatureHandlers();
         bus.UseMyFeatureQueue();
     });
 
+    // Options bind once from configuration and are injected through IOptions<T>.
     services.Configure<MyFeatureOptions>(Configuration.GetSection("MyFeature"));
     services.Configure<CqrsOptions>(Configuration.GetSection("Cqrs"));
 
     services.AddControllers()
         .AddCqrsGateway(options =>
         {
+            // The gateway exposes commands under the same API version as controllers.
             options.BasePath = "/v1";
             options.CqrsAssemblies.Add(typeof(AddMyItemCommand).Assembly);
         })
@@ -78,16 +85,22 @@ public sealed class StartupService : IStartupService
 {
     public void ConfigureServices(IConfiguration configuration, IServiceCollection services)
     {
+        // Client packages can be discovered in server contexts; skip UI-only services there.
         bool isClient = services.Any(s => s.ServiceType == typeof(IMenuService));
         if (!isClient) return;
 
+        // Localization is needed by menu items and UI labels.
         services.AddResourceProvider(Localization.ResourceManager);
+
+        // Transient view models keep state isolated per page/component instance.
         services.AddTransient<MyItemsViewModel>();
         services.AddTransient<MyItemViewModel>();
 
+        // Bind feature and HTTP options from shared appsettings sections.
         services.Configure<MyFeatureOptions>(configuration.GetSection("MyFeature"));
         services.Configure<HttpMyFeatureOptions>(configuration.GetSection("Http"));
 
+        // Register route discovery, module lifecycle and API access.
         services.AddDynamicRouteBuilderProvider<DynamicRouteBuilderProvider>();
         services.AddModule<MyFeatureModule>();
         services.AddHttpMyFeature();

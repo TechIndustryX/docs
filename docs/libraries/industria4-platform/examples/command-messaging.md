@@ -19,6 +19,7 @@ using Industria4.DomainModel;
 
 namespace Industria4.MyFeature.Cqrs.Commands;
 
+// The gateway checks this policy before dispatching the command.
 [CqrsAuthorize("MyFeature.Items.New")]
 public sealed class AddMyItemCommand : AddEntityCommand<MyItemType>
 {
@@ -28,6 +29,7 @@ public sealed class AddMyItemCommand : AddEntityCommand<MyItemType>
         LanguageDictionary<string> descriptions,
         MetadataDictionary metadata) : base(id)
     {
+        // Keep commands immutable so handlers receive a stable operation payload.
         Code = code;
         Descriptions = descriptions ?? throw new ArgumentNullException(nameof(descriptions));
         Metadata = metadata ?? new MetadataDictionary();
@@ -48,12 +50,14 @@ public sealed class AddMyItemHandler(IRepository<MyItem> repository)
 {
     public async Task Handle(AddMyItemCommand command)
     {
+        // Build the aggregate/domain entity from the command payload.
         var item = new MyItem(
             command.Id,
             command.Code,
             command.Descriptions,
             command.Metadata);
 
+        // Repository persistence remains inside the handler, not the controller.
         await repository.AddAsync(item);
     }
 }
@@ -64,11 +68,15 @@ public sealed class AddMyItemHandler(IRepository<MyItem> repository)
 ```csharp title="Startup.cs"
 services.AddServiceBus(bus =>
 {
+    // Route commands from the gateway to the queue used by this bounded context.
     bus.AddMyFeatureCommandsRoute();
+
+    // Registers every NServiceBus handler in the feature assembly.
     bus.AddMyFeatureHandlers();
 
     if (HostingEnvironment.IsTesting())
     {
+        // Tests can run without external queue infrastructure.
         bus.UseMyFeatureInMemoryQueue();
     }
     else
@@ -84,7 +92,10 @@ services.AddServiceBus(bus =>
 services.AddControllers()
     .AddCqrsGateway(options =>
     {
+        // Commands are exposed under /v1 using the platform gateway conventions.
         options.BasePath = "/v1";
+
+        // The gateway scans this assembly for command contracts and policies.
         options.CqrsAssemblies.Add(typeof(AddMyItemCommand).Assembly);
     })
     .AddODataSupport()
@@ -97,6 +108,7 @@ services.AddControllers()
 ```csharp title="MyItemClient.cs"
 public Task AddAsync(AddMyItemCommand command, CancellationToken token = default)
 {
+    // The typed client hides the gateway URL and serializer details from the UI.
     return _restClient.PostAsync<AddMyItemCommand, string>(_uri, command, token);
 }
 ```

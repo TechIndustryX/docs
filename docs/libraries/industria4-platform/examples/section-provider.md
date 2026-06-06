@@ -22,6 +22,7 @@ public sealed class SectionsProvider : ISectionsProvider
 {
     public IEnumerable<SectionItem> GetItems()
     {
+        // The string must match the placeholder name exposed by the host screen.
         yield return SectionItem.Create<MyFeatureWorkOrderPanel>(
             "Mes.WorkOrder.InnerGeneral");
     }
@@ -36,6 +37,7 @@ public sealed class SectionsProvider : ISectionsProvider
 <div class="card">
     <div class="card-header">My Feature</div>
     <div class="card-body">
+        @* RowInput keeps labels and fields aligned with the rest of the platform. *@
         <RowInput Label="External Code">
             <Input>
                 <InputText class="form-control" @bind-Value="ViewModel.ExternalCode" />
@@ -51,6 +53,7 @@ public sealed class SectionsProvider : ISectionsProvider
 </div>
 
 @code {
+    // Load section-specific data after the host page has created the component.
     protected override Task OnInitializedAsync()
         => ViewModel.LoadAsync();
 }
@@ -61,6 +64,7 @@ public sealed class SectionsProvider : ISectionsProvider
 The host page renders the section by name. For example, a work-order page can expose an extension point like this:
 
 ```razor title="WorkOrder.razor"
+@* Context gives injected components access to the host screen model. *@
 <SectionPlaceholder<WorkOrderViewModel>
     Name="Mes.WorkOrder.InnerGeneral"
     Context="@ViewModel" />
@@ -74,6 +78,7 @@ public void ConfigureServices(IConfiguration configuration, IServiceCollection s
     bool isClient = services.Any(s => s.ServiceType == typeof(IMenuService));
     if (!isClient) return;
 
+    // Register page state and the provider that contributes the section.
     services.AddTransient<MyFeatureViewModel>();
     services.AddScoped<ISectionsProvider, SectionsProvider>();
 }

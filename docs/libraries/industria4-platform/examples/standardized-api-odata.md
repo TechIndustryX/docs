@@ -16,10 +16,12 @@ The reference pattern is `WorkorderController` plus `WorkOrderClient`.
 public void ConfigureServices(IServiceCollection services)
 {
     services.AddHttpContextAccessor();
+    // Correlation flows request identifiers through API, command and event handling.
     services.AddCorrelation();
 
     services.AddMyFeatureEntityFramework(options =>
     {
+        // Expand environment variables so deployments can inject the final secret.
         var connectionString = Environment.ExpandEnvironmentVariables(
             Configuration.GetConnectionString("MyFeature"));
         options.UseSqlServer(connectionString);
@@ -27,6 +29,7 @@ public void ConfigureServices(IServiceCollection services)
 
     services.AddServiceBus(bus =>
     {
+        // Commands sent through the API are routed to this feature queue.
         bus.AddMyFeatureCommandsRoute();
         bus.AddMyFeatureHandlers();
         bus.UseMyFeatureQueue();
@@ -35,9 +38,11 @@ public void ConfigureServices(IServiceCollection services)
     services.AddControllers()
         .AddCqrsGateway(options =>
         {
+            // The gateway exposes command endpoints beside normal REST endpoints.
             options.BasePath = "/v1";
             options.CqrsAssemblies.Add(typeof(AddMyItemCommand).Assembly);
         })
+        // Enables $filter, $orderby, $top and $count on IQueryable endpoints.
         .AddODataSupport()
         .AddNewtonsoftJson(options =>
             options.SerializerSettings.ConfigureForCqrs().ConfigureForOData());
@@ -49,6 +54,7 @@ public void ConfigureServices(IServiceCollection services)
 public void Configure(IApplicationBuilder app)
 {
     app.UseRouting();
+    // Authentication must run before authorization policies are evaluated.
     app.UseAuthentication();
     app.UseAuthorization();
     app.UseEndpoints(endpoints => endpoints.MapControllers());
@@ -67,12 +73,14 @@ using Microsoft.AspNetCore.Mvc;
 [ApiController]
 public sealed class MyItemController : Controller
 {
+    // ODataPaging wraps IQueryable results in the platform paged response shape.
     [ODataPaging]
     [HttpGet]
     [Authorize("MyFeature.Items")]
     public IQueryable<MyItemRead> Get(
         [FromServices] IDataAccessObject<MyItemRead> data)
     {
+        // Returning IQueryable lets the OData filter translate to the data provider.
         return data;
     }
 
@@ -82,6 +90,7 @@ public sealed class MyItemController : Controller
         string id,
         [FromServices] IRepository<MyItem> repository)
     {
+        // Full entity reads use the repository rather than the read-model projection.
         var item = await repository.GetAsync(id);
         if (item == null) return NotFound();
 
@@ -104,7 +113,10 @@ public sealed class MyItemClient
     public MyItemClient(RestClient restClient, IOptions<HttpMyFeatureOptions> options)
     {
         _restClient = restClient;
+        // The base URI comes from configuration, so views never hard-code API hosts.
         _uri = new Uri(options.Value.MyFeature, "v1/myitem");
+
+        // Commands and events need the platform CQRS JSON converters.
         _restClient.JsonSerializerSettings.ConfigureForCqrs();
     }
 
@@ -112,8 +124,10 @@ public sealed class MyItemClient
         Func<IQueryable<MyItemRead>, IQueryable<MyItemRead>> queryFactory,
         CancellationToken token = default)
     {
+        // GetRequest converts LINQ operations into the OData query string.
         var request = new GetRequest<MyItemRead>
         {
+            // Count is required by paged grids.
             WithCount = true,
             QueryFactory = queryFactory
         };
@@ -149,10 +163,12 @@ public sealed class MyItemsViewModel(MyItemClient client)
         {
             if (!string.IsNullOrWhiteSpace(search))
             {
+                // Keep search composition in the view model, not in Razor markup.
                 query = query.Where(x => x.Code.Contains(search));
             }
 
             return query
+                // Always apply deterministic ordering before paging.
                 .OrderBy(x => x.Code)
                 .Skip(0)
                 .Take(50);

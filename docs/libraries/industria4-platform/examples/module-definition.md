@@ -13,11 +13,17 @@ Understand what a module is in the platform and choose the correct implementatio
 ```csharp
 public interface IModule
 {
+    // Human-readable name used by host logs and diagnostics.
     string Name { get; }
+
+    // Called when the host activates the module.
     Task LoadAsync(CancellationToken cancellationToken);
+
+    // Called when the host stops or removes the module.
     Task UnloadAsync(CancellationToken cancellationToken);
 }
 
+// Marker interface for modules that run in the Blazor client.
 public interface IClientModule : IModule
 {
 }
@@ -32,9 +38,16 @@ Use `ProcessModule` when the module is an external backend process:
 ```csharp
 public sealed class WebApiModule : ProcessModule
 {
+    // Keep the name stable so logs and operations dashboards can identify it.
     public override string Name => "MES API";
+
+    // The executable started by ProcessModule.
     public override string ProcessNameExe => "Industria4.Mes.WebApi.exe";
+
+    // Resolve the executable relative to the package working directory.
     public override string WorkingDir => Path.Combine(base.WorkingDir, "bin");
+
+    // Module-specific environment comes from Packages:Mes.WebApi.
     public override IDictionary<string, string> Environment =>
         Configuration.GetEnvironmentVariablesFromSection("Packages:Mes.WebApi");
 }
@@ -59,7 +72,7 @@ public sealed class MyFeatureModule : IClientModule
 
     public Task LoadAsync(CancellationToken cancellationToken)
     {
-        // Register menus, client state and UI integration.
+        // Register menus, routes, client state and UI integration.
         return Task.CompletedTask;
     }
 

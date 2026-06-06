@@ -11,6 +11,7 @@ Send a command from a web/API module, handle it in a service and publish an even
 ## Command
 
 ```csharp title="ReleaseOrderCommand.cs"
+// Commands are immutable messages: include intent and required input only.
 public sealed record ReleaseOrderCommand(
     Guid OrderId,
     string LineCode,
@@ -26,10 +27,16 @@ public sealed class ReleaseOrderHandler(
 {
     public async Task Handle(ReleaseOrderCommand command, CancellationToken token)
     {
+        // Load the aggregate that owns the business rule.
         var order = await repository.GetOrderAsync(command.OrderId, token);
+
+        // Keep state transitions inside the domain object.
         order.ReleaseToLine(command.LineCode, command.RequestedBy);
 
+        // Persist before publishing the completion event.
         await repository.SaveAsync(order, token);
+
+        // Events let UI/read-model consumers react without coupling to the handler.
         await publisher.PublishAsync(new OrderReleasedEvent(command.OrderId, command.LineCode), token);
     }
 }
