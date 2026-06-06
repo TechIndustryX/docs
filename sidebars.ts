@@ -1,12 +1,87 @@
 import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
 import {apiSidebars} from './api-sidebars';
 
-type LibraryId = keyof typeof apiSidebars;
+type LibraryId =
+  | 'hsds-dotnet'
+  | 'industria4-platform'
+  | 'opcua-bridge'
+  | 'simatic-wincc-chromium'
+  | 'twincat-analytics-collector'
+  | 'twincat-data-streaming'
+  | 'twincat-hmi-ui-controls'
+  | 'twincat-rpc';
+
+const libraryExamples = {
+  'hsds-dotnet': [
+    'domain-and-client',
+    'groups-and-attributes',
+    'datasets-and-chunks',
+    'worker-service',
+  ],
+  'industria4-platform': [
+    'local-composition',
+    'module-hosting',
+    'identity-users-roles',
+    'cqrs-command-flow',
+    'recipes-and-mes',
+    'opcua-data-logger',
+    'production-composition',
+  ],
+  'opcua-bridge': [
+    'run-server',
+    'echo-plugin',
+    'dynamic-namespace',
+    'node-read-write',
+    'write-and-method-interception',
+    'edge-container',
+  ],
+  'simatic-wincc-chromium': [
+    'embed-webview',
+    'runtime-context',
+    'rdp-client',
+    'test-host',
+  ],
+  'twincat-analytics-collector': [
+    'mqtt-collector',
+    'decode-and-store',
+    'parquet-storage',
+    'hsds-storage',
+    'historical-download-cleanup',
+  ],
+  'twincat-data-streaming': [
+    'twincat-symbol-reader',
+    'mqtt-forwarder',
+    'azure-functions-ingestion',
+    'log-analytics-query',
+    'realtime-dashboard',
+    'simulator-to-cloud',
+  ],
+  'twincat-hmi-ui-controls': [
+    'basic-controls',
+    'gauge-zones',
+    'live-svg',
+    'slide-panel',
+    'custom-function',
+  ],
+  'twincat-rpc': [
+    'register-host',
+    'invoke-notifications',
+    'request-reply',
+    'typed-payloads',
+    'tester-workflow',
+    'router-service',
+  ],
+} satisfies Record<LibraryId, string[]>;
 
 const libraryItems = (id: LibraryId) => [
   `libraries/${id}/overview`,
   `libraries/${id}/quickstart`,
-  `libraries/${id}/examples`,
+  {
+    type: 'category' as const,
+    label: 'Examples',
+    link: {type: 'doc' as const, id: `libraries/${id}/examples/index`},
+    items: libraryExamples[id].map((example) => `libraries/${id}/examples/${example}`),
+  },
   `libraries/${id}/guides`,
   {
     type: 'category' as const,

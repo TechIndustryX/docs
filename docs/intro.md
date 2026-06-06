@@ -26,4 +26,3 @@ flowchart LR
 - **Getting Started**: ecosystem overview, installation, package and container consumption, runtime environment.
 - **Libraries**: one first-level section per component with overview, quickstart, examples, guides and API reference.
 - **Guides**: cross-project operating procedures.
-- **Examples**: practical end-to-end scenarios.

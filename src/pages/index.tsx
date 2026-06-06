@@ -12,11 +12,6 @@ const cards = [
     description: 'Read library overviews, quickstarts, examples, guides and API reference.',
     href: '/libraries/overview',
   },
-  {
-    title: 'Examples',
-    description: 'Follow end-to-end scenarios for HSDS, OPC UA plugins, TwinCAT RPC and streaming dashboards.',
-    href: '/examples/overview',
-  },
 ];
 
 export default function Home() {
