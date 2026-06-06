@@ -21,6 +21,7 @@ const libraryExamples = {
   'industria4-platform': [
     'local-composition',
     'module-hosting',
+    'frontend-local-hosting',
     'backend-module',
     'frontend-module',
     'module-definition',
@@ -91,6 +92,14 @@ const libraryItems = (id: LibraryId) => [
     link: {type: 'doc' as const, id: `libraries/${id}/examples/index`},
     items: libraryExamples[id].map((example) => `libraries/${id}/examples/${example}`),
   },
+  ...(id === 'industria4-platform'
+    ? [{
+        type: 'category' as const,
+        label: 'Modules',
+        link: {type: 'doc' as const, id: 'libraries/industria4-platform/modules/index'},
+        items: ['libraries/industria4-platform/modules/built-in-modules'],
+      }]
+    : []),
   {
     type: 'category' as const,
     label: 'API Reference',
