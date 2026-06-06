@@ -6,21 +6,43 @@ title: Live SVG
 
 ## Scenario
 
-Turn a machine SVG into a live HMI element with text, color and click interactions.
+Use `LiveSvg` to render a machine drawing and update visual state from PLC values.
 
-## Source Pattern
+## Control Example
 
-`TcHmiSample/Contents/LiveSvgSample.content` binds SVG selectors to text and fill values and handles `onItemClicked`.
+```html title="LiveSvgSample.content"
+<TcHmi.Controls.TechIndustry_TcHmi_Controls.LiveSvg
+  Data-tchmi-name="PressSvg"
+  Data-tchmi-left="0"
+  Data-tchmi-top="0"
+  Data-tchmi-width="640"
+  Data-tchmi-height="360"
+  Data-tchmi-src="Images/press.svg" />
+```
 
-## Steps
+## Script Pattern
 
-1. Place `LiveSvg` and set `Src` to the SVG asset.
-2. Add item mappings with CSS selectors.
-3. Bind text or fill values to controls, symbols or functions.
-4. Add an `onItemClicked` trigger for interactive elements.
-5. Write the result to the relevant control or symbol.
+```js title="press-state.js"
+TcHmi.EventProvider.register('PressSvg.onAttached', function () {
+  const control = TcHmi.Controls.get('PressSvg');
 
-## Expected Result
+  TcHmi.Symbol.readEx2('%s%PLC1.MAIN.bRunning%/s%', function (data) {
+    if (data.error === TcHmi.Errors.NONE) {
+      control.setElementClass('motor', data.value ? 'running' : 'stopped');
+    }
+  });
+});
+```
 
-The SVG becomes a live operator surface instead of a static image.
+## Step By Step
 
+1. Create an SVG with stable element IDs or class names.
+2. Add `LiveSvg` to the HMI page.
+3. Set `Src` to the SVG asset.
+4. Bind or script PLC values to SVG element classes.
+5. Define CSS classes for states such as running, stopped and alarm.
+6. Test all states from PLC simulation.
+
+## Validation
+
+The SVG should change state without reloading the page and without losing scale when the panel is resized.

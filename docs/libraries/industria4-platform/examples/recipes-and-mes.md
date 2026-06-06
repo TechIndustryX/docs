@@ -6,21 +6,46 @@ title: Recipes and MES
 
 ## Scenario
 
-Coordinate production recipes with MES work orders and operational state.
+Use recipe models to define production parameters and connect selected recipes to MES/order execution.
 
-## Source Pattern
+## Recipe Model
 
-`RecipeHandler` manages recipe add/update/delete/clone flows. `MesHandler` creates work orders, applies quantity changes, validates state and publishes work-order events.
+```json title="press-recipe.json"
+{
+  "code": "PRESS-A",
+  "name": "Press Recipe A",
+  "parameters": [
+    { "name": "Temperature", "type": "Real", "unit": "C", "min": 20, "max": 90 },
+    { "name": "Pressure", "type": "Real", "unit": "bar", "min": 1, "max": 8 },
+    { "name": "CycleTime", "type": "TimeSpan", "unit": "s", "min": 1, "max": 20 }
+  ]
+}
+```
 
-## Steps
+## Execution Pattern
 
-1. Create or update recipe/model data.
-2. Create a MES work order that references the operational context.
-3. Move the work order through valid states.
-4. Apply done or waste quantity changes only when the work order state allows it.
-5. Listen for work-order changed and quantity-added events.
+```csharp
+public async Task ApplyRecipeToOrderAsync(Guid recipeId, Guid orderId, CancellationToken token)
+{
+    var recipe = await recipes.GetAsync(recipeId, token);
+    var order = await mes.GetOrderAsync(orderId, token);
 
-## Expected Result
+    order.AssignRecipe(recipe.Code, recipe.Parameters);
+    await mes.SaveOrderAsync(order, token);
 
-Recipe configuration and production execution share a consistent command/event model.
+    await commandBus.Send(new SendRecipeToLineCommand(orderId, recipe.Code), token);
+}
+```
 
+## Step By Step
+
+1. Define recipe models with parameter types and validation ranges.
+2. Create recipe instances approved for production.
+3. Link a recipe to a MES order.
+4. Validate parameters against the model before release.
+5. Send the recipe to the line through a command.
+6. Track command completion and operator acknowledgement.
+
+## Validation
+
+Try one valid and one invalid parameter set. The invalid set must be rejected before it reaches the production line.

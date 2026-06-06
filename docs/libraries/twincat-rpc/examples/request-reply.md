@@ -6,27 +6,51 @@ title: Request Reply
 
 ## Scenario
 
-Ask the PLC for a value or operation result and wait for the typed reply.
+Ask the PLC for a value or operation result and wait for the typed reply. The library handles the request handshake against the PLC function block.
 
-## Source Pattern
+## Complete Example
 
-The sample uses `CreateRequestReply<T>()`. `RequestReply<T>` waits for `bCanExecute`, invokes `Execute`, waits for `bReplying`, reads the reply and confirms completion.
+```csharp title="GetCurrentOrder.cs"
+using System.Text.Json.Serialization;
+using TechIndustry.Rpc.TwinCAT;
 
-## Steps
+public sealed class OrderClient(IAdsClientFactory factory)
+{
+    public async Task<Order?> GetCurrentOrderAsync(CancellationToken token)
+    {
+        await using var getOrder =
+            factory.CreateRequestReply<Order>("MAIN.fbMachine2.fbGetOrder2");
 
-1. Create a request/reply object for the PLC function block symbol.
-2. Call `InvokeAsync` with a timeout token.
-3. Read the typed result.
-4. Handle `TwinCATRpcException` when the PLC reports an error.
+        return await getOrder.InvokeAsync(token);
+    }
+}
 
-## Example
+public sealed class Order
+{
+    [JsonPropertyName("sOrder")]
+    public string? OrderNumber { get; set; }
 
-```csharp
-var getOrder = factory.CreateRequestReply<Order>("MAIN.fbMachine2.fbGetOrder2");
-var order = await getOrder.InvokeAsync(cancellationToken);
+    [JsonPropertyName("iQuantity")]
+    public int Quantity { get; set; }
+}
 ```
 
-## Expected Result
+## Step By Step
 
-The .NET application receives a typed response while the PLC handshake remains consistent.
+1. Create the PLC request/reply function block.
+2. Expose it with a stable symbol, for example `MAIN.fbMachine2.fbGetOrder2`.
+3. Define the .NET reply type.
+4. Call `CreateRequestReply<TReply>(symbol)`.
+5. Call `InvokeAsync(token)`.
+6. Handle `TwinCATRpcException` for PLC-side errors or timeout states.
 
+## Validation
+
+```csharp
+var order = await orderClient.GetCurrentOrderAsync(CancellationToken.None);
+Console.WriteLine($"{order?.OrderNumber}: {order?.Quantity}");
+```
+
+## When To Use
+
+Use request/reply when the .NET side needs a deterministic answer from the PLC before continuing, such as current order, calculated setpoint, command result or validation result.

@@ -6,20 +6,52 @@ title: RDP Client
 
 ## Scenario
 
-Open a remote desktop session through a Myrtille gateway inside a WinCC screen.
+Embed a Myrtille RDP session into an HMI panel with `RdpClient`.
 
-## Source Pattern
+## Complete Example
 
-`RdpClient` builds the Myrtille URL from `Server`, `Domain`, `Username`, `Password` or `PasswordHash`, optional size and security protocol. `RdpClientForm` shows how the test host recreates the control.
+```csharp title="RdpPanel.cs"
+using System.Windows.Forms;
+using WinCC.Chronium;
 
-## Steps
+public sealed class RdpPanel : UserControl
+{
+    public RdpPanel()
+    {
+        var rdp = new RdpClient
+        {
+            Dock = DockStyle.Fill,
+            MyrtilleServer = new Uri("https://rdp-gateway.example.local/"),
+            Server = "industrial-pc-01",
+            Domain = "PLANT",
+            Username = "operator",
+            PasswordHash = "<hash from secure configuration>",
+            Security = RdpClientSecurity.Auto,
+            ScreenWidth = null,
+            ScreenHeight = null,
+            Zoom = 1.0
+        };
 
-1. Configure `MyrtilleServer`.
-2. Set the remote `Server`, `Domain` and `Username`.
-3. Prefer `PasswordHash` when the gateway supports it.
-4. Set `ScreenWidth`, `ScreenHeight` and `Security` when defaults are not appropriate.
-5. Validate the connection from the test host before HMI deployment.
+        Controls.Add(rdp);
+    }
+}
+```
 
-## Expected Result
+## Step By Step
 
-Operators can open a controlled remote session from the HMI panel.
+1. Deploy and test Myrtille separately.
+2. Set `MyrtilleServer` to the gateway base URI.
+3. Set target RDP `Server`.
+4. Set `Domain` and `Username`.
+5. Prefer `PasswordHash` when supported by the gateway.
+6. Leave `ScreenWidth` and `ScreenHeight` null for panel-driven sizing.
+7. Use `RdpClientSecurity.Auto` unless the gateway requires a specific mode.
+
+## Validation
+
+Run the test host and confirm:
+
+- the Myrtille login URL is reached;
+- the RDP session opens;
+- resizing the panel does not break the session;
+- credentials are not hard-coded in source.

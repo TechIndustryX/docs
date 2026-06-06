@@ -6,21 +6,50 @@ title: CQRS Command Flow
 
 ## Scenario
 
-Understand how a platform operation travels from HTTP/API input to handlers, repositories and events.
+Send a command from a web/API module, handle it in a service and publish an event that updates waiting clients.
 
-## Source Pattern
+## Command
 
-Modules register command routes with `AddCqrsGateway`, configure Rebus routes and handlers, and publish validation, added, updated, removed or completed events from handlers.
+```csharp title="ReleaseOrderCommand.cs"
+public sealed record ReleaseOrderCommand(
+    Guid OrderId,
+    string LineCode,
+    string RequestedBy);
+```
 
-## Steps
+## Handler
 
-1. Register command assemblies with the module API.
-2. Add the module command routes to the service bus.
-3. Implement a handler for the command.
-4. Validate conflicts, authorization and concurrency before writing.
-5. Publish validation or completion events for callers and UI modules.
+```csharp title="ReleaseOrderHandler.cs"
+public sealed class ReleaseOrderHandler(
+    IProductionRepository repository,
+    IMessagePublisher publisher)
+{
+    public async Task Handle(ReleaseOrderCommand command, CancellationToken token)
+    {
+        var order = await repository.GetOrderAsync(command.OrderId, token);
+        order.ReleaseToLine(command.LineCode, command.RequestedBy);
 
-## Expected Result
+        await repository.SaveAsync(order, token);
+        await publisher.PublishAsync(new OrderReleasedEvent(command.OrderId, command.LineCode), token);
+    }
+}
+```
 
-Every module follows the same operational contract: commands in, validation/completion events out.
+## Step By Step
 
+1. Define an immutable command with only the data required for the operation.
+2. Validate authorization before sending the command.
+3. Handle business changes in the domain/application service.
+4. Persist changes.
+5. Publish a completion or domain event.
+6. Update web clients from the event stream.
+7. Log command ID, user and aggregate ID.
+
+## Validation
+
+Send a command from the API and confirm:
+
+- entity state changes in storage;
+- completion event is published;
+- UI updates after the event;
+- invalid commands return validation errors.

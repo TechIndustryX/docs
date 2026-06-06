@@ -6,21 +6,48 @@ title: Realtime Dashboard
 
 ## Scenario
 
-Show live machine values in a React dashboard while querying history from Log Analytics.
+Build a dashboard that shows current machine values from forwarded MQTT topics.
 
-## Source Pattern
+## Browser Client Example
 
-The `TechIndustry.Streaming.DemoSite` README describes a dashboard that combines Web PubSub live messages, Log Analytics historical queries and CoreUI/Chart.js visualization.
+```ts title="dashboard.ts"
+import mqtt from 'mqtt';
 
-## Steps
+const client = mqtt.connect('wss://mqtt.example.local:8084/mqtt');
+const values = new Map<string, string>();
 
-1. Run the backend functions that provide Web PubSub access tokens and query history.
-2. Configure the dashboard endpoints.
-3. Open the dashboard and establish the Web PubSub connection.
-4. Publish live telemetry messages to the hub.
-5. Load hour/day/week history from Log Analytics.
+client.on('connect', () => {
+  client.subscribe('line-a/press-01/#');
+});
 
-## Expected Result
+client.on('message', (topic, payload) => {
+  values.set(topic, payload.toString());
+  render();
+});
 
-Operators and stakeholders see current values, historical trend ranges and anomaly indicators in one UI.
+function render() {
+  document.querySelector('#temperature')!.textContent =
+    values.get('line-a/press-01/temperature') ?? '-';
+  document.querySelector('#running')!.textContent =
+    values.get('line-a/press-01/running') ?? '-';
+}
+```
 
+## Step By Step
+
+1. Configure the `MqttForwarder` to publish one simple topic per value.
+2. Use retained MQTT messages for current state.
+3. Connect the dashboard over WebSocket MQTT.
+4. Subscribe to the machine topic prefix.
+5. Store the latest value per topic.
+6. Render values whenever a new message arrives.
+
+## Validation
+
+Open the dashboard, restart it and confirm that retained values appear immediately without waiting for the next PLC update.
+
+## Production Notes
+
+- Use a broker that supports WebSocket connections for browser dashboards.
+- Protect browser subscriptions with broker ACLs.
+- Keep dashboards read-only unless command writes are explicitly designed and audited.

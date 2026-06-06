@@ -6,21 +6,32 @@ title: Gauge Zones
 
 ## Scenario
 
-Visualize a process value with operating ranges and clear thresholds.
+Show a process value with visual ranges for normal, warning and alarm states.
 
-## Source Pattern
+## Gauge Example
 
-`TcHmiSample/Contents/GaugeSample.content` configures a `Gauge` with min/max values, zones, labels and pointer/stroke colors.
+```html title="GaugeSample.content"
+<TcHmi.Controls.TechIndustry_TcHmi_Controls.Gauge
+  Data-tchmi-name="TemperatureGauge"
+  Data-tchmi-left="32"
+  Data-tchmi-top="32"
+  Data-tchmi-width="280"
+  Data-tchmi-height="220"
+  Data-tchmi-value="%s%PLC1.MAIN.fTemperature%/s%"
+  Data-tchmi-min-value="0"
+  Data-tchmi-max-value="120"
+  Data-tchmi-unit="°C" />
+```
 
-## Steps
+## Step By Step
 
-1. Add the `Gauge` control to the HMI content.
-2. Bind `Value` to the process value.
-3. Set `MinValue` and `MaxValue`.
-4. Configure zones for normal, warning and alarm ranges.
-5. Configure labels so operators can read thresholds quickly.
+1. Place the `Gauge` control on the page.
+2. Bind `Value` to the PLC process value.
+3. Set minimum and maximum values to the real engineering range.
+4. Configure unit text for operator clarity.
+5. Add warning/alarm zones in the control properties when available.
+6. Test low, normal and high values from the PLC.
 
-## Expected Result
+## Validation
 
-The gauge communicates value and operating range without requiring the operator to interpret raw numbers.
-
+Simulate values around the range boundaries and confirm the operator can distinguish normal, warning and alarm zones immediately.

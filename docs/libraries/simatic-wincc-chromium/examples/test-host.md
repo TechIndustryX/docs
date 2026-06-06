@@ -6,21 +6,51 @@ title: Test Host
 
 ## Scenario
 
-Validate browser and RDP behavior on a Windows workstation before installing controls into WinCC.
+Validate `ChroniumBrowser` and `RdpClient` behavior in a normal WinForms test application before installing them in the HMI runtime.
 
-## Source Pattern
+## Test Form Pattern
 
-`tests/WinCC.Chronium.Test/Program.cs` starts `BrowserForm`; the test forms instantiate the browser and RDP controls outside the HMI runtime.
+```csharp title="Program.cs"
+using System.Windows.Forms;
 
-## Steps
+Application.EnableVisualStyles();
+Application.SetCompatibleTextRenderingDefault(false);
+Application.Run(new BrowserForm());
+```
 
-1. Build the solution on Windows with WebView2 runtime installed.
-2. Run the test host.
-3. Validate browser navigation, cache/session behavior and zoom.
-4. Validate RDP URL generation and Myrtille connectivity.
-5. Promote the same property set to the WinCC screen.
+```csharp title="BrowserForm.cs"
+public sealed class BrowserForm : Form
+{
+    public BrowserForm()
+    {
+        var split = new SplitContainer { Dock = DockStyle.Fill };
+        split.Panel1.Controls.Add(new ChroniumBrowser
+        {
+            Dock = DockStyle.Fill,
+            Url = new Uri("https://hmi.example.local/overview"),
+            UserName = "test-operator"
+        });
+        split.Panel2.Controls.Add(new RdpClient
+        {
+            Dock = DockStyle.Fill,
+            MyrtilleServer = new Uri("https://rdp-gateway.example.local/"),
+            Server = "industrial-pc-01",
+            Username = "operator"
+        });
+        Controls.Add(split);
+    }
+}
+```
 
-## Expected Result
+## Step By Step
 
-Deployment issues are found before the controls are placed in the production HMI project.
+1. Create a small WinForms test project.
+2. Add one form for browser tests and one for RDP tests.
+3. Use non-production URLs and credentials.
+4. Test resize, reload, session reuse and disposal.
+5. Recreate controls at runtime to detect cleanup issues.
+6. Only then move settings to the HMI project.
 
+## Validation
+
+The test host should start without WinCC and prove that WebView2 runtime, gateway connectivity and sizing behave correctly.

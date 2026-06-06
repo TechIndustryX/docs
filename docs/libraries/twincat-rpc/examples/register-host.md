@@ -6,21 +6,70 @@ title: Register Host
 
 ## Scenario
 
-Create a .NET worker or console app that can communicate with a TwinCAT PLC through ADS.
+Configure a .NET worker that connects to a TwinCAT runtime and exposes `IAdsClientFactory` for request/reply and notification flows.
 
-## Source Pattern
+## Configuration
 
-`TechIndustry.Rpc.TwinCAT.Sample/Program.cs` registers `AddTwinCATRpc`, binds `AdsOptions` and resolves `IAdsClientFactory`.
+```json title="appsettings.json"
+{
+  "Ads": {
+    "NetId": "192.168.1.30.1.1",
+    "Port": 851
+  }
+}
+```
 
-## Steps
+## Complete Example
 
-1. Add static route configuration when the target requires it.
-2. Register `AddTwinCATRpc()`.
-3. Bind `Ads:NetId` and `Ads:Port`.
-4. Start the host.
-5. Resolve `IAdsClientFactory` or `AdsClientService`.
+```csharp title="Program.cs"
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using TechIndustry.Rpc.TwinCAT;
 
-## Expected Result
+var builder = Host.CreateDefaultBuilder(args);
 
-The process maintains an ADS connection and can create typed request, reply and invoke objects.
+builder.ConfigureAppConfiguration(configuration =>
+{
+    configuration.AddStaticRoutesXmlConfiguration();
+});
 
+builder.ConfigureServices((context, services) =>
+{
+    services.AddTwinCATRpc();
+    services.Configure<AdsOptions>(context.Configuration.GetSection("Ads"));
+    services.AddHostedService<MachineRpcWorker>();
+});
+
+await builder.Build().RunAsync();
+```
+
+```csharp title="MachineRpcWorker.cs"
+using Microsoft.Extensions.Hosting;
+using TechIndustry.Rpc.TwinCAT;
+
+public sealed class MachineRpcWorker(IAdsClientFactory factory) : BackgroundService
+{
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        await using var setQuantity =
+            factory.CreateRequest<short>("MAIN.fbMachine2.fbSetQuantity");
+
+        await setQuantity.InvokeAsync(2, stoppingToken);
+    }
+}
+```
+
+## Step By Step
+
+1. Configure `Ads:NetId` and `Ads:Port`.
+2. Add static routes if your deployment uses `StaticRoutes.xml`.
+3. Call `services.AddTwinCATRpc()`.
+4. Configure `AdsOptions` from configuration.
+5. Resolve `IAdsClientFactory` in hosted services.
+6. Create request, reply or invoke objects with the full PLC symbol path.
+
+## Validation
+
+- Confirm the TwinCAT runtime is reachable on the configured AMS Net ID.
+- Confirm the PLC symbol exists and is online.
+- Log startup failures from `AdsClientService`.

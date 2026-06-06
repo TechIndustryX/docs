@@ -6,20 +6,41 @@ title: Runtime Context
 
 ## Scenario
 
-Pass WinCC runtime context to the web page so it can adapt language and user-specific behavior.
+Expose operator context to the embedded page so the web app can show the correct user, plant area or session-specific UI.
 
-## Source Pattern
+## Control Setup
 
-`ChroniumBrowser.OpenUrl` appends the `culture` query-string parameter and exposes a `hosting` object to page scripts with user data.
+```csharp
+var browser = new ChroniumBrowser
+{
+    Url = new Uri("https://hmi.example.local/dashboard"),
+    Session = "press-01-shift-a",
+    UserName = currentOperatorName,
+    Dock = DockStyle.Fill
+};
+```
 
-## Steps
+## Page-Side Access
 
-1. Set `Culture` from the HMI language.
-2. Set `UserName` and `Password` only when the hosted application requires runtime context.
-3. Let the control recreate navigation when context changes.
-4. Read the `hosting` object from the web page.
+`ChroniumBrowser` exposes a host object named `hosting`. A page can read the runtime user from JavaScript:
 
-## Expected Result
+```js title="browser-context.js"
+async function readWinccContext() {
+  const hosting = chrome.webview.hostObjects.hosting;
+  const userName = await hosting.getUserName();
 
-The hosted page receives the same session context as the HMI screen and can localize or authenticate accordingly.
+  document.querySelector('[data-user]').textContent = userName;
+}
+```
 
+## Step By Step
+
+1. Set `UserName` from the WinCC/operator context.
+2. Set `Session` to a stable identifier for the current HMI session.
+3. In the web app, read `chrome.webview.hostObjects.hosting`.
+4. Use the context to load operator-specific preferences or permissions.
+5. Keep secrets server-side; only expose UI context to the page.
+
+## Validation
+
+Open the page in the test host and verify that the page displays the expected user name.

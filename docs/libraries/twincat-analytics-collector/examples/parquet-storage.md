@@ -6,21 +6,45 @@ title: Parquet Storage
 
 ## Scenario
 
-Persist TwinCAT Analytics recordings as Parquet files for data-lake or batch-processing workflows.
+Persist historical samples to Parquet files for data lake, batch analytics or offline inspection.
 
-## Source Pattern
+## Configuration
 
-The collector selects Parquet storage from configuration and registers the Parquet `IRecordsStorage` implementation.
+```json title="appsettings.json"
+{
+  "Storage": "Parquet",
+  "Parquet": {
+    "Directory": "data/parquet",
+    "FileNamePattern": "{stream}/{yyyy}/{MM}/{dd}/{recordId}.parquet"
+  }
+}
+```
 
-## Steps
+## Complete Host
+
+```csharp
+app.Services.Configure<ParquetOptions>(app.Configuration.GetSection("Parquet"));
+app.Services.AddParquetStorage();
+```
+
+## Step By Step
 
 1. Set `Storage` to `Parquet`.
-2. Configure the Parquet output location and record options.
-3. Start the collector.
-4. Let completed recordings flow through `StoreAsync`.
-5. Inspect output files with Python, Spark or another Parquet-compatible tool.
+2. Configure the output directory.
+3. Choose a path pattern that partitions by stream and date.
+4. Start the collector.
+5. Download a historical range.
+6. Confirm Parquet files are created.
+7. Load the files from Spark, DuckDB, Python or another analytics tool.
 
-## Expected Result
+## Validation
 
-Historical machine data is available as analytical files with typed columns and timestamps.
+```bash
+find data/parquet -name '*.parquet' -print
+```
 
+Then query a file with your preferred Parquet reader and verify timestamp, symbol and value columns.
+
+## When To Use
+
+Choose Parquet for long-term analytics, batch processing and inexpensive archival storage.

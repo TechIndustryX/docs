@@ -6,21 +6,59 @@ title: Tester Workflow
 
 ## Scenario
 
-Validate PLC symbols interactively before wiring them into a production service.
+Configure the tester utility with a list of PLC symbols so commissioning can invoke requests and replies without writing custom code every time.
 
-## Source Pattern
+## Configuration
 
-`TechIndustry.Rpc.TwinCAT.Tester` reads configured `SymbolsOptions`, asks which symbol to invoke, parses values by type and runs request or reply mode.
+```json title="appsettings.json"
+{
+  "Ads": {
+    "NetId": "192.168.1.30.1.1",
+    "Port": 851
+  },
+  "Symbols": {
+    "1": {
+      "Symbol": "MAIN.fbMachine2.fbSetQuantity",
+      "Type": "Int32",
+      "Mode": "Request"
+    },
+    "2": {
+      "Symbol": "MAIN.fbMachine2.fbCompleteOrder",
+      "Type": "Int32",
+      "Mode": "Reply"
+    },
+    "3": {
+      "Symbol": "MAIN.fbMachine2.fbSetOrder2",
+      "Type": "Json",
+      "Mode": "Request"
+    },
+    "4": {
+      "Symbol": "MAIN.fbMachine2.fbGetOrder2",
+      "Type": "Json",
+      "Mode": "Reply"
+    }
+  }
+}
+```
 
-## Steps
+## Step By Step
 
-1. Configure a numbered list of symbols.
-2. Assign `Mode` as `Request` or `Reply`.
-3. Assign `Type` as `Int32`, `Bool`, `Float`, `String` or `Json`.
-4. Run the tester.
-5. Invoke each symbol and check timeout or result behavior.
+1. Set the ADS route to the target runtime.
+2. Add one entry under `Symbols` per PLC operation.
+3. Use `Mode: Request` for commands without return value.
+4. Use `Mode: Reply` for commands that return a value.
+5. Set `Type` to the expected payload format.
+6. Run the tester against a PLC test project first.
+7. Promote the validated symbol list into commissioning documentation.
 
-## Expected Result
+## Validation Checklist
 
-PLC and .NET teams can verify symbols and function block handshakes before building the final integration.
+- The ADS route resolves.
+- Each symbol exists in the PLC runtime.
+- Request symbols toggle the expected PLC handshake.
+- Reply symbols return values in the expected type.
+- JSON payloads match the PLC property names.
 
+## Usage Pattern
+
+Use the tester during PLC commissioning, troubleshooting and regression tests. Production services should still use explicit typed clients so failures are handled in code.

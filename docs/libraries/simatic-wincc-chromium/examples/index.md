@@ -4,10 +4,11 @@ title: Examples
 
 # SIMATIC WinCC Chromium Examples
 
-These examples are based on the WinForms test host and the `ChroniumBrowser` and `RdpClient` controls.
+These examples show how to embed WebView2 pages and Myrtille RDP sessions inside WinForms/WinCC-style panels.
 
-- [Embed WebView](./embed-webview.md): host web content inside a WinCC screen.
-- [Runtime Context](./runtime-context.md): pass language and user context to the page.
-- [RDP Client](./rdp-client.md): open a Myrtille session from the HMI.
-- [Test Host](./test-host.md): validate controls before deploying to WinCC.
+## Learning Path
 
+1. [Embed WebView](./embed-webview.md): host a web page in `ChroniumBrowser`.
+2. [Runtime Context](./runtime-context.md): pass user/session context to the page.
+3. [RDP Client](./rdp-client.md): embed a Myrtille remote desktop session.
+4. [Test Host](./test-host.md): validate controls before moving to the HMI runtime.

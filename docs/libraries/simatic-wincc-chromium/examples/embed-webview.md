@@ -6,21 +6,42 @@ title: Embed WebView
 
 ## Scenario
 
-Embed a web dashboard or internal portal inside a WinCC HMI panel.
+Embed a browser-based operator page in a WinForms panel using `ChroniumBrowser`.
 
-## Source Pattern
+## Complete Example
 
-`ChroniumBrowser` creates a WebView2 control during `OnLoad`, prepares a session-specific user-data folder and navigates to the configured URL.
+```csharp title="BrowserForm.cs"
+using System.Windows.Forms;
+using WinCC.Chronium;
 
-## Steps
+public sealed class BrowserForm : Form
+{
+    public BrowserForm()
+    {
+        var browser = new ChroniumBrowser
+        {
+            Dock = DockStyle.Fill,
+            Url = new Uri("https://hmi.example.local/line-a/press-01"),
+            Session = "line-a-operator",
+            UserName = "operator",
+            Zoom = 1.0,
+            Shared = true
+        };
 
-1. Add `ChroniumBrowser` to the WinForms or WinCC-hosted surface.
-2. Set `Url` to the page to display.
-3. Set `SessionId` when different runtime sessions need isolated browser data.
-4. Set `CacheEnabled` according to whether the browser instance can be reused.
-5. Set `Zoom` for panel readability.
+        Controls.Add(browser);
+    }
+}
+```
 
-## Expected Result
+## Step By Step
 
-The HMI hosts modern web content without leaving the operator runtime.
+1. Drop `ChroniumBrowser` into the WinForms or WinCC host panel.
+2. Set `Dock = Fill` for full-panel rendering.
+3. Set the target `Url`.
+4. Set `Session` to isolate browser user data per operator/session.
+5. Set `Shared = true` when equal URL/session combinations can reuse a WebView2 instance.
+6. Set `Zoom` only when the HMI layout requires it.
 
+## Validation
+
+Run the test host and confirm the page loads, keeps its session state and resizes with the parent panel.

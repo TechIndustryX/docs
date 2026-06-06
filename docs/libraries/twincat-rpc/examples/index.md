@@ -4,12 +4,26 @@ title: Examples
 
 # TwinCAT RPC Examples
 
-These examples follow the `.NET` sample/tester and the RPC library classes.
+These examples show how to call PLC function blocks from .NET and how to receive PLC notifications with ADS.
 
-- [Register Host](./register-host.md): configure the .NET host and ADS connection.
-- [Invoke Notifications](./invoke-notifications.md): react when PLC logic triggers an invoke block.
-- [Request Reply](./request-reply.md): call PLC request/reply function blocks.
-- [Typed Payloads](./typed-payloads.md): send primitives, structs and JSON classes.
-- [Tester Workflow](./tester-workflow.md): validate configured symbols interactively.
-- [Router Service](./router-service.md): start an AMS TCP/IP router when needed.
+## Learning Path
 
+1. [Register Host](./register-host.md): configure ADS and register RPC services.
+2. [Invoke Notifications](./invoke-notifications.md): subscribe to PLC-to-.NET invocations.
+3. [Request Reply](./request-reply.md): send a request and wait for the PLC reply.
+4. [Typed Payloads](./typed-payloads.md): map PLC structs and JSON payloads to .NET types.
+5. [Tester Workflow](./tester-workflow.md): configure symbols for an operator/test utility.
+6. [Router Service](./router-service.md): run an ADS router when the host needs one.
+
+## Runtime Model
+
+```mermaid
+flowchart LR
+  dotnet[".NET service"] --> factory["IAdsClientFactory"]
+  factory --> ads["ADS client service"]
+  ads --> plc["TwinCAT PLC"]
+  plc --> invoke["Invoke symbols"]
+  dotnet --> request["Request / RequestReply"]
+```
+
+Use `CreateInvoke<T>()` when the PLC notifies .NET. Use `CreateRequest<T>()` and `CreateRequestReply<T>()` when .NET asks the PLC to perform work.

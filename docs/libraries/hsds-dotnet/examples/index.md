@@ -4,10 +4,26 @@ title: Examples
 
 # HSDS .NET Examples
 
-These examples are based on the support console in `src/TechIndustry.Hsds.Console` and the public `SimpleHsdsClient` API.
+These examples show how to use `TechIndustry.Hsds` from normal .NET applications. Start from the client setup, then move to groups, attributes, datasets and background ingestion.
 
-- [Domain and Client](./domain-and-client.md): configure dependency injection and select the active HSDS domain.
-- [Groups and Attributes](./groups-and-attributes.md): work with HDF5-style paths and metadata.
-- [Datasets and Chunks](./datasets-and-chunks.md): create compressed datasets and read/write values in ranges.
-- [Worker Service](./worker-service.md): use the client from a hosted .NET service.
+## Learning Path
 
+1. [Domain and Client](./domain-and-client.md): configure the HSDS endpoint, credentials and active domain.
+2. [Groups and Attributes](./groups-and-attributes.md): create a hierarchy and attach metadata to groups.
+3. [Datasets and Chunks](./datasets-and-chunks.md): create compressed datasets and write/read large arrays by range.
+4. [Worker Service](./worker-service.md): run HSDS writes from a hosted background process.
+
+## Runtime Model
+
+`SimpleHsdsClient` is the high-level entry point. It wraps the lower-level REST client and gives you domain, group, dataset, attribute and value helpers. A typical application keeps one configured instance in dependency injection and sets the active `Domain` before doing operations.
+
+```mermaid
+flowchart LR
+  app[".NET app"] --> di["Dependency injection"]
+  di --> client["SimpleHsdsClient"]
+  client --> domain["HSDS domain"]
+  domain --> groups["Groups"]
+  domain --> datasets["Datasets"]
+  groups --> attributes["Attributes"]
+  datasets --> values["Typed values"]
+```

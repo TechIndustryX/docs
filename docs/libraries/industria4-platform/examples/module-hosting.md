@@ -6,20 +6,47 @@ title: Module Hosting
 
 ## Scenario
 
-Register and load platform modules through the shared hosting layer.
+Load platform modules consistently through the shared hosting layer instead of launching each process with separate scripts.
 
-## Source Pattern
+## Module Pattern
 
-`ModulesLoaderHostedService` creates a scope and calls `ModulesLoader.LoadAsync` during application startup. Hosted modules such as `Identity.WebApi.Hosting.WebApiModule` inherit from `ProcessModule` and expose process name, working directory and environment.
+```csharp title="WebApiModule.cs"
+using Industria4.Hosting.Modules;
 
-## Steps
+public sealed class IdentityWebApiModule : ProcessModule
+{
+    public override string Name => "identity-webapi";
+    public override string ProcessName => "Industria4.Identity.WebApi";
+    public override string WorkingDirectory => "modules/identity-webapi";
 
-1. Implement or configure an `IModule` or `ProcessModule`.
-2. Register the module from its startup service.
-3. Provide environment variables from the relevant configuration section.
-4. Let `ModulesLoaderHostedService` load modules at application start.
-5. Monitor logs for loading failures and process start errors.
+    public override IDictionary<string, string?> EnvironmentVariables =>
+        new Dictionary<string, string?>
+        {
+            ["ASPNETCORE_URLS"] = "http://+:8081",
+            ["ConnectionStrings__Default"] = Configuration["ConnectionStrings:Default"]
+        };
+}
+```
 
-## Expected Result
+## Host Pattern
 
-Modules are loaded by the host consistently instead of being started with ad-hoc process scripts.
+```csharp
+builder.Services.AddHostedService<ModulesLoaderHostedService>();
+builder.Services.AddSingleton<IModule, IdentityWebApiModule>();
+builder.Services.AddSingleton<IModule, RecipesWebAppModule>();
+builder.Services.AddSingleton<IModule, DataLoggerModule>();
+```
+
+## Step By Step
+
+1. Implement a module for every process or package to host.
+2. Set a stable module name.
+3. Define process name and working directory.
+4. Pass configuration through environment variables.
+5. Register modules in the host service collection.
+6. Let `ModulesLoaderHostedService` start them at application startup.
+7. Monitor module logs as part of platform health.
+
+## Validation
+
+Stop a hosted module and restart the host. The module should start from the configured working directory with the expected environment.

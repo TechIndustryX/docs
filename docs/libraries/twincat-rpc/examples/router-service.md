@@ -6,21 +6,51 @@ title: Router Service
 
 ## Scenario
 
-Use an AMS TCP/IP router from the .NET process when a local TwinCAT router is not available.
+Run an ADS router from the .NET host when the deployment needs to create or manage ADS connectivity locally.
 
-## Source Pattern
+## Complete Example
 
-`AddTwinCATRouter` registers `AdsRouterService` and `AmsTcpIpRouter`. The hosted service starts the router and logs status changes.
+```csharp title="Program.cs"
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using TechIndustry.Rpc.TwinCAT;
 
-## Steps
+var builder = Host.CreateDefaultBuilder(args);
 
-1. Register `AddTwinCATRouter()` before starting the host.
-2. Configure static routes as required by the target network.
-3. Start the host.
-4. Confirm router status logs.
-5. Use normal RPC request/invoke objects once ADS routing is available.
+builder.ConfigureServices((context, services) =>
+{
+    services.AddTwinCATRouter();
+    services.AddTwinCATRpc();
+    services.Configure<AdsOptions>(context.Configuration.GetSection("Ads"));
+});
 
-## Expected Result
+await builder.Build().RunAsync();
+```
 
-The process can communicate over ADS TCP/IP in environments where the workstation does not already host a TwinCAT router.
+## Step By Step
 
+1. Decide whether the target machine already has a working ADS router.
+2. If not, register `AddTwinCATRouter()`.
+3. Keep `AddTwinCATRpc()` registered for the actual RPC client service.
+4. Configure `AdsOptions` with target `NetId` and `Port`.
+5. Start the host before invoking PLC symbols.
+6. Monitor router startup logs.
+
+## Validation
+
+Run a minimal request after startup:
+
+```csharp
+await using var setQuantity =
+    factory.CreateRequest<short>("MAIN.fbMachine2.fbSetQuantity");
+
+await setQuantity.InvokeAsync(1);
+```
+
+If the router and route are correct, the request reaches the PLC without ADS connection errors.
+
+## Deployment Notes
+
+- Industrial PCs often already have TwinCAT router services installed.
+- Containers and service-hosted apps may need explicit router handling.
+- Keep route configuration under deployment control; do not rely on manual machine state.

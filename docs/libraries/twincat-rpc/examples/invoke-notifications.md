@@ -6,21 +6,68 @@ title: Invoke Notifications
 
 ## Scenario
 
-Let PLC logic trigger external .NET behavior without expecting a return payload.
+Receive notifications from PLC function blocks. This is useful for events such as machine state changes, counters, alarms or operator actions.
 
-## Source Pattern
+## Complete Example
 
-The sample creates typed invokes such as `CreateInvoke<int>("MAIN.fbMachine2.fbInvokeInt")` and handles the `Invoked` event.
+```csharp title="MachineEventsWorker.cs"
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using TechIndustry.Rpc.TwinCAT;
 
-## Steps
+public sealed class MachineEventsWorker(
+    IAdsClientFactory factory,
+    ILogger<MachineEventsWorker> logger) : BackgroundService
+{
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        await using var intEvent = factory.CreateInvoke<int>("MAIN.fbMachine2.fbInvokeInt");
+        await using var boolEvent = factory.CreateInvoke<bool>("MAIN.fbMachine2.fbInvokeBool");
+        await using var realEvent = factory.CreateInvoke<float>("MAIN.fbMachine2.fbInvokeReal");
+        await using var textEvent = factory.CreateInvoke<string>("MAIN.fbMachine2.fbInvokeString");
 
-1. Create an invoke object for the PLC function block symbol.
-2. Subscribe to `Invoked`.
-3. Keep the object alive for the lifetime of the subscription.
-4. Execute application logic in the event handler.
-5. Dispose the invoke object when the host stops.
+        intEvent.Invoked += (_, value) =>
+        {
+            logger.LogInformation("Int event: {Value}", value);
+            return Task.CompletedTask;
+        };
 
-## Expected Result
+        boolEvent.Invoked += (_, value) =>
+        {
+            logger.LogInformation("Bool event: {Value}", value);
+            return Task.CompletedTask;
+        };
 
-PLC-side events are observed in .NET through ADS notifications.
+        realEvent.Invoked += (_, value) =>
+        {
+            logger.LogInformation("Real event: {Value}", value);
+            return Task.CompletedTask;
+        };
 
+        textEvent.Invoked += (_, value) =>
+        {
+            logger.LogInformation("String event: {Value}", value);
+            return Task.CompletedTask;
+        };
+
+        await Task.Delay(Timeout.InfiniteTimeSpan, stoppingToken);
+    }
+}
+```
+
+## Step By Step
+
+1. Identify the PLC invoke function block symbol.
+2. Choose the .NET type that matches the PLC payload.
+3. Create the invoke subscription with `CreateInvoke<T>()`.
+4. Attach an `Invoked` handler.
+5. Keep the object alive for as long as you want to receive events.
+6. Dispose it when the service stops.
+
+## Validation
+
+Trigger the corresponding PLC event and confirm that the .NET log prints the value.
+
+## Production Use
+
+Use invoke notifications for asynchronous events. Do not poll PLC symbols if the PLC can push the event through an invoke block.

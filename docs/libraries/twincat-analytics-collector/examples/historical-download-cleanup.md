@@ -6,21 +6,45 @@ title: Historical Download Cleanup
 
 ## Scenario
 
-Avoid reprocessing old recordings by deleting a historical record after it has been stored successfully.
+Download historical records, verify that they were persisted and then delete old recordings from the source when your retention policy allows it.
 
-## Source Pattern
+## Cleanup Flow
 
-`HistoricalStream.TryDownloadRecordsAsync` calls `StoreAsync`; on `StoreResult.Success` it sends a delete command through `MqttHistoricalService.DeleteStreamAsync`.
+```csharp title="CleanupFlow.cs"
+public async Task ArchiveAndCleanupAsync(
+    HistoricalStream stream,
+    DateTimeOffset start,
+    DateTimeOffset end,
+    CancellationToken token)
+{
+    var storedRecordIds = new List<int>();
 
-## Steps
+    await foreach (var batch in stream.GetDataAsync(start, end, 10_000, token))
+    {
+        await storage.StoreAsync(stream, batch, token);
+        storedRecordIds.AddRange(batch.Select(x => x.RecordId).Distinct());
+    }
 
-1. Process only records that are not currently recording.
-2. Store the record through the selected backend.
-3. Return `StoreResult.Success` only after the backend write is complete.
-4. Send `DeleteHistoricalDataCmd` for the processed record ids.
-5. Remove deleted ids from pending download jobs.
+    await stream.DeleteAsync(storedRecordIds.Distinct(), token);
+}
+```
 
-## Expected Result
+## Step By Step
 
-The collector is idempotent enough for continuous use: successful records are removed from the TwinCAT Analytics source queue.
+1. Select a retention window, for example data older than 30 days.
+2. Download a small time range first.
+3. Store the downloaded batches.
+4. Verify stored count and expected time span.
+5. Only after validation, send delete commands for the archived record IDs.
+6. Log every deleted record ID.
+7. Keep cleanup disabled in dry-run mode until the storage backend is proven.
 
+## Validation
+
+- Re-run the query against storage and confirm the archived data is present.
+- Ask the source for the same historical range and confirm old record IDs were removed.
+- Keep audit logs for each cleanup run.
+
+## Safety Notes
+
+Do not delete source recordings in the same transaction as the first storage write. Validate storage first, then cleanup.

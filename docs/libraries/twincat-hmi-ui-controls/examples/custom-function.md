@@ -6,20 +6,38 @@ title: Custom Function
 
 ## Scenario
 
-Use a project function to transform HMI state before it reaches a control property.
+Create a small HMI function that converts a PLC value into a display color or CSS class.
 
-## Source Pattern
+## Function Example
 
-`TcHmiSample/Functions/BoolToRedGreenFunction.ts` registers a function that converts a boolean into a red or green solid color. `LiveSvgSample.content` uses the function in a binding expression.
+```js title="BoolToColor.js"
+TcHmi.Functions.registerFunctionEx(
+  'BoolToColor',
+  'TechIndustry.TcHmi',
+  function (value, trueColor, falseColor) {
+    return value ? trueColor : falseColor;
+  }
+);
+```
 
-## Steps
+## Binding Example
 
-1. Implement the function under `TcHmi.Functions.<Project>`.
-2. Register it with `registerFunctionEx`.
-3. Reference the function from a binding expression.
-4. Return the exact type expected by the target property.
+```html
+<TcHmi.Controls.TechIndustry_TcHmi_Bootstrap_Controls.IconLabel
+  Data-tchmi-name="AutoModeLabel"
+  Data-tchmi-text="Auto"
+  Data-tchmi-color="%f%TechIndustry.TcHmi.BoolToColor(%s%PLC1.MAIN.bAutoMode%/s%, '#27ae60', '#95a5a6')%/f%" />
+```
 
-## Expected Result
+## Step By Step
 
-Control styling rules stay reusable and testable instead of being duplicated in page triggers.
+1. Create the JavaScript function in the HMI project.
+2. Register it with `TcHmi.Functions.registerFunctionEx`.
+3. Use only simple, deterministic logic.
+4. Call the function from a binding expression.
+5. Test true, false, null and unexpected values.
+6. Use the function across controls that need the same visual rule.
 
+## Validation
+
+Toggle the bound PLC boolean and confirm the control color changes immediately.

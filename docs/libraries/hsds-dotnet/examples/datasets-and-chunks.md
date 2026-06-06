@@ -6,41 +6,81 @@ title: Datasets and Chunks
 
 ## Scenario
 
-Store large time-series or batch data efficiently by creating a dataset with compression and chunked writes.
+Create a compressed numeric dataset and write a large number of values without loading everything into memory at once. This follows the console sample pattern that writes and reads by `Range`.
 
-## Source Pattern
+## Complete Example
 
-The console sample creates a compressed integer dataset and writes values in one-million-sample chunks using `SetDatasetValuesAsync`.
+```csharp title="ChunkedDataset.cs"
+using System.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using TechIndustry.Hsds;
 
-## Steps
+var builder = Host.CreateApplicationBuilder(args);
+builder.Services.AddHsdsClient(new Uri(builder.Configuration["Hsds:Endpoint"]!));
 
-1. Delete or rename an existing dataset only when you intentionally want a clean run.
-2. Create the dataset with shape, max dimensions, compression and chunk settings.
-3. Write values by ranges instead of uploading one large array.
-4. Read ranges back to validate the stored data.
+using var host = builder.Build();
+var hsds = host.Services.GetRequiredService<SimpleHsdsClient>();
+hsds.Username = builder.Configuration["Hsds:Username"];
+hsds.Password = builder.Configuration["Hsds:Password"];
+hsds.Domain = builder.Configuration["Hsds:Domain"];
 
-## Example
+await hsds.EnsureDomainAsync();
 
-```csharp
-var sampleCount = 5_000_000;
-var chunkSize = 1_000_000;
+const string datasetPath = "FactoryA/Line01/Press01/temperature";
+const int totalValues = 5_000_000;
+const int chunkSize = 100_000;
 
-var dataset = await hsds.EnsureDatasetAsync<int>(
-    "measurements/temperature",
-    shape: [sampleCount],
-    maxdims: [sampleCount],
+await hsds.DeleteDatasetAsync(datasetPath);
+
+var dataset = await hsds.EnsureDatasetAsync<float>(
+    datasetPath,
+    shape: [totalValues],
+    maxdims: [totalValues],
     gzipCompressed: true,
     chunks: [chunkSize]);
 
+var stopwatch = Stopwatch.StartNew();
 var position = 0;
-foreach (var chunk in Enumerable.Range(0, sampleCount).Chunk(chunkSize))
+
+foreach (var chunk in Enumerable.Range(0, totalValues).Chunk(chunkSize))
 {
-    await hsds.SetDatasetValuesAsync(dataset.Id, chunk, position..(position + chunk.Length));
-    position += chunk.Length;
+    var values = chunk.Select(x => 20.0f + MathF.Sin(x / 1000f)).ToArray();
+    await hsds.SetDatasetValuesAsync(dataset.Id, values, position..(position + values.Length));
+    position += values.Length;
 }
+
+Console.WriteLine($"Write completed in {stopwatch.Elapsed}");
+
+var firstMinute = await hsds.GetDatasetValuesAsync<float>(dataset.Id, 0..60);
+Console.WriteLine($"First value: {firstMinute[0]}");
 ```
 
-## Expected Result
+## Step By Step
 
-The dataset can be loaded and queried in ranges, which keeps memory usage predictable for large industrial data series.
+1. Decide the logical dataset path under the machine group.
+2. Choose a typed dataset, for example `float`, `int`, `bool` or `double`.
+3. Set `shape` and `maxdims` to the expected size.
+4. Enable `gzipCompressed` for telemetry and historical arrays.
+5. Set `chunks` to the write/read block size used by your ingestion process.
+6. Write each range with `SetDatasetValuesAsync(dataset.Id, values, range)`.
+7. Read only the needed range with `GetDatasetValuesAsync<T>()`.
 
+## Validation
+
+After writing, verify both metadata and data:
+
+```csharp
+var info = await hsds.GetDatasetAsync(datasetPath);
+Console.WriteLine($"{info.Id} {info.Shape.Dims[0]} values");
+
+var sample = await hsds.GetDatasetValuesAsync<float>(info.Id, 1000..1010);
+Console.WriteLine(string.Join(", ", sample));
+```
+
+## Sizing Guidance
+
+- Use small chunks for interactive reads.
+- Use larger chunks for batch ingestion.
+- Keep chunk size aligned with the amount of data your producer can retry safely.
+- For append-like flows, resize first, then write only the newly allocated range.
