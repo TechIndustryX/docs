@@ -18,15 +18,18 @@ public sealed class OrderClient(IAdsClientFactory factory)
 {
     public async Task<Order?> GetCurrentOrderAsync(CancellationToken token)
     {
+        // Create one RPC wrapper per invocation scope and dispose the ADS handle after use.
         await using var getOrder =
             factory.CreateRequestReply<Order>("MAIN.fbMachine2.fbGetOrder2");
 
+        // InvokeAsync waits until the PLC replies or the cancellation token fires.
         return await getOrder.InvokeAsync(token);
     }
 }
 
 public sealed class Order
 {
+    // Match the JSON field emitted by the PLC structure.
     [JsonPropertyName("sOrder")]
     public string? OrderNumber { get; set; }
 

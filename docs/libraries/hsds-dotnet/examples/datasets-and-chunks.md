@@ -17,26 +17,35 @@ using Microsoft.Extensions.Hosting;
 using TechIndustry.Hsds;
 
 var builder = Host.CreateApplicationBuilder(args);
+
+// Register the typed HSDS client once and resolve it through DI.
 builder.Services.AddHsdsClient(new Uri(builder.Configuration["Hsds:Endpoint"]!));
 
 using var host = builder.Build();
 var hsds = host.Services.GetRequiredService<SimpleHsdsClient>();
+
+// Keep credentials in configuration or user secrets, never in source code.
 hsds.Username = builder.Configuration["Hsds:Username"];
 hsds.Password = builder.Configuration["Hsds:Password"];
 hsds.Domain = builder.Configuration["Hsds:Domain"];
 
+// Ensure the target domain exists before creating groups or datasets under it.
 await hsds.EnsureDomainAsync();
 
 const string datasetPath = "FactoryA/Line01/Press01/temperature";
 const int totalValues = 5_000_000;
+
+// Pick a chunk size that matches the retryable ingestion batch size.
 const int chunkSize = 100_000;
 
 await hsds.DeleteDatasetAsync(datasetPath);
 
 var dataset = await hsds.EnsureDatasetAsync<float>(
     datasetPath,
+    // shape is the current dataset size; maxdims is the maximum allowed size.
     shape: [totalValues],
     maxdims: [totalValues],
+    // Compression is useful for telemetry arrays with repeated patterns.
     gzipCompressed: true,
     chunks: [chunkSize]);
 
@@ -45,7 +54,10 @@ var position = 0;
 
 foreach (var chunk in Enumerable.Range(0, totalValues).Chunk(chunkSize))
 {
+    // Generate only the current chunk to avoid holding the full dataset in memory.
     var values = chunk.Select(x => 20.0f + MathF.Sin(x / 1000f)).ToArray();
+
+    // Range writes let HSDS update exactly the slice represented by this chunk.
     await hsds.SetDatasetValuesAsync(dataset.Id, values, position..(position + values.Length));
     position += values.Length;
 }
@@ -74,6 +86,7 @@ After writing, verify both metadata and data:
 var info = await hsds.GetDatasetAsync(datasetPath);
 Console.WriteLine($"{info.Id} {info.Shape.Dims[0]} values");
 
+// Read a narrow range for validation instead of downloading the whole dataset.
 var sample = await hsds.GetDatasetValuesAsync<float>(info.Id, 1000..1010);
 Console.WriteLine(string.Join(", ", sample));
 ```

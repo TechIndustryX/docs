@@ -20,11 +20,18 @@ public sealed class BrowserForm : Form
     {
         var browser = new ChroniumBrowser
         {
+            // Fill the WinCC/WinForms host panel.
             Dock = DockStyle.Fill,
+
+            // Point to the operator page served by the web/HMI application.
             Url = new Uri("https://hmi.example.local/line-a/press-01"),
+
+            // Session isolates WebView2 user data between operators or panels.
             Session = "line-a-operator",
             UserName = "operator",
             Zoom = 1.0,
+
+            // Shared instances reduce memory when equal URL/session pairs are reused.
             Shared = true
         };
 

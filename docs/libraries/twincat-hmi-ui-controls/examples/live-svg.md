@@ -24,10 +24,12 @@ Use `LiveSvg` to render a machine drawing and update visual state from PLC value
 
 ```js title="press-state.js"
 TcHmi.EventProvider.register('PressSvg.onAttached', function () {
+  // Resolve the LiveSvg control after TcHmi has attached it to the page.
   const control = TcHmi.Controls.get('PressSvg');
 
   TcHmi.Symbol.readEx2('%s%PLC1.MAIN.bRunning%/s%', function (data) {
     if (data.error === TcHmi.Errors.NONE) {
+      // Drive visual state by changing the SVG element class.
       control.setElementClass('motor', data.value ? 'running' : 'stopped');
     }
   });

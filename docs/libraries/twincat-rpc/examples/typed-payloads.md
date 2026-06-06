@@ -16,10 +16,12 @@ Use a struct when the PLC side expects a fixed memory layout.
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
+// Match the PLC memory layout: field order, packing and string encoding all matter.
 [StructLayout(LayoutKind.Sequential, Pack = 8, CharSet = CharSet.Ansi)]
 [SuppressMessage("ReSharper", "FieldCanBeMadeReadOnly.Global")]
 public struct OrderValue
 {
+    // Fixed-length PLC strings must declare the exact marshalled size.
     [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 255)]
     public string Number;
 
@@ -28,6 +30,7 @@ public struct OrderValue
 ```
 
 ```csharp
+// Use fixed-layout payloads for symbols backed by a PLC structure buffer.
 await using var setOrder =
     factory.CreateRequest<OrderValue>("MAIN.fbMachine2.fbSetOrder");
 
@@ -47,6 +50,7 @@ using System.Text.Json.Serialization;
 
 public sealed class Order
 {
+    // Property names must match the PLC JSON contract.
     [JsonPropertyName("sOrder")]
     public string? OrderNumber { get; set; }
 
@@ -56,6 +60,7 @@ public sealed class Order
 ```
 
 ```csharp
+// Use JSON payloads when the PLC function block serializes/deserializes by name.
 await using var setOrder =
     factory.CreateRequest<Order>("MAIN.fbMachine2.fbSetOrder2");
 

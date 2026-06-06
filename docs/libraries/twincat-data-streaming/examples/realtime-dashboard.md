@@ -13,19 +13,25 @@ Build a dashboard that shows current machine values from forwarded MQTT topics.
 ```ts title="dashboard.ts"
 import mqtt from 'mqtt';
 
+// Browsers connect to MQTT through WebSocket, not the raw TCP MQTT port.
 const client = mqtt.connect('wss://mqtt.example.local:8084/mqtt');
+
+// Store only the latest value for each topic; retained messages repopulate it on reconnect.
 const values = new Map<string, string>();
 
 client.on('connect', () => {
+  // Subscribe to all metrics published for this machine.
   client.subscribe('line-a/press-01/#');
 });
 
 client.on('message', (topic, payload) => {
+  // Topic names are the stable identifiers used by the dashboard widgets.
   values.set(topic, payload.toString());
   render();
 });
 
 function render() {
+  // Missing values are rendered explicitly so offline/misconfigured topics are visible.
   document.querySelector('#temperature')!.textContent =
     values.get('line-a/press-01/temperature') ?? '-';
   document.querySelector('#running')!.textContent =

@@ -15,13 +15,16 @@ using Grpc.Core;
 using Grpc.Net.Client.Configuration;
 using Industria4.Bridge.OpcUaServer.Plugin;
 
+// The same plugin can run locally or in a container by changing BRIDGE_URI.
 var bridgeUri = Environment.GetEnvironmentVariable("BRIDGE_URI") ?? "http://localhost:8100";
 
+// Local bridge development often uses HTTP/2 without TLS.
 AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
 
 await Host.CreateDefaultBuilder(args)
     .ConfigureServices(services =>
     {
+        // Keep plugin behavior in a hosted service so it starts with the worker host.
         services.AddHostedService<EchoPluginHostedService>();
 
         var retry = new MethodConfig
@@ -29,6 +32,7 @@ await Host.CreateDefaultBuilder(args)
             Names = { MethodName.Default },
             RetryPolicy = new RetryPolicy
             {
+                // Retry while the bridge process is still booting.
                 MaxAttempts = 5,
                 InitialBackoff = TimeSpan.FromMilliseconds(200),
                 MaxBackoff = TimeSpan.FromSeconds(2),
@@ -42,6 +46,7 @@ await Host.CreateDefaultBuilder(args)
             options.Address = new Uri(bridgeUri);
             options.ChannelOptionsActions.Add(channel =>
             {
+                // Apply retry behavior to every unary call made by this client.
                 channel.ServiceConfig = new ServiceConfig { MethodConfigs = { retry } };
             });
         });

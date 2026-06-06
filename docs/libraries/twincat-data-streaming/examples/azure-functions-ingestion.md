@@ -27,6 +27,7 @@ public sealed class TelemetryClient(HttpClient http)
 {
     public async Task SendAsync(CancellationToken token)
     {
+        // Keep the payload flat so it maps cleanly to Log Analytics columns.
         var payload = new
         {
             time = DateTimeOffset.UtcNow,
@@ -36,11 +37,13 @@ public sealed class TelemetryClient(HttpClient http)
             unit = "C"
         };
 
+        // The function endpoint can validate, normalize and batch telemetry server-side.
         using var response = await http.PostAsJsonAsync(
             "https://<function-app>.azurewebsites.net/api/HttpToLogAnalytics",
             payload,
             token);
 
+        // Surface ingestion failures to the caller instead of silently dropping telemetry.
         response.EnsureSuccessStatusCode();
     }
 }
@@ -58,6 +61,7 @@ public sealed class TelemetryClient(HttpClient http)
 ## Validation Query
 
 ```kusto
+// Validate a single stream before broadening the query to all machines.
 TechIndustryTelemetry_CL
 | where stream_s == "line-a/press-01"
 | top 20 by TimeGenerated desc
