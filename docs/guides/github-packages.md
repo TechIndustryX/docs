@@ -9,7 +9,7 @@ NuGet package workflows publish on `push` to `main`.
 Current package producers:
 
 - `hsds-dotnet` publishes `TechIndustry.Hsds`.
-- `twincat-rpc` publishes `TechIndustry.Rpc.TwinCAT`.
+- `twincat-integration` publishes `TechIndustry.Rpc.TwinCAT`.
 
 Consumers authenticate against:
 

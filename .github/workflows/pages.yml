@@ -72,11 +72,11 @@ jobs:
           path: sources/twincat-hmi-ui-controls
           token: ${{ secrets.DOCS_READ_TOKEN || github.token }}
 
-      - name: Checkout twincat-rpc
+      - name: Checkout twincat-integration
         uses: actions/checkout@v4
         with:
-          repository: TechIndustryX/twincat-rpc
-          path: sources/twincat-rpc
+          repository: TechIndustryX/twincat-integration
+          path: sources/twincat-integration
           token: ${{ secrets.DOCS_READ_TOKEN || github.token }}
 
       - uses: actions/setup-node@v4

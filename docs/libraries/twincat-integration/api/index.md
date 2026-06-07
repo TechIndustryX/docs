@@ -1,14 +1,14 @@
 ---
-title: "TwinCAT RPC API Reference"
+title: "TwinCAT Integration API Reference"
 ---
 
-# TwinCAT RPC API Reference
+# TwinCAT Integration API Reference
 
-Source repository: `TechIndustryX/twincat-rpc`
+Source repository: `TechIndustryX/twincat-integration`
 
 ## .NET API
 
-Detected 20 public C# types and 54 members across 4 namespaces.
+Detected 20 public C# types and 55 members across 4 namespaces.
 
 ## Namespaces
 

@@ -9,7 +9,7 @@ type LibraryId =
   | 'twincat-analytics-collector'
   | 'twincat-data-streaming'
   | 'twincat-hmi-ui-controls'
-  | 'twincat-rpc';
+  | 'twincat-integration';
 
 const libraryExamples = {
   'hsds-dotnet': [
@@ -73,11 +73,16 @@ const libraryExamples = {
     'slide-panel',
     'custom-function',
   ],
-  'twincat-rpc': [
+  'twincat-integration': [
     'register-host',
     'invoke-notifications',
     'request-reply',
     'typed-payloads',
+    'plc-structured-text-rpc',
+    'plc-messaging',
+    'plc-mqtt-service-broker',
+    'plc-signals-machine-state',
+    'plc-sample-project',
     'tester-workflow',
     'router-service',
   ],
@@ -159,8 +164,8 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: 'TwinCAT RPC',
-      items: libraryItems('twincat-rpc'),
+      label: 'TwinCAT Integration',
+      items: libraryItems('twincat-integration'),
     },
   ],
 };

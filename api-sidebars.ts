@@ -4387,18 +4387,18 @@ export const apiSidebars: Record<string, any[]> = {
       ]
     }
   ],
-  "twincat-rpc": [
+  "twincat-integration": [
     {
       "type": "category",
       "label": "Global namespace",
       "link": {
         "type": "doc",
-        "id": "libraries/twincat-rpc/api/global/index"
+        "id": "libraries/twincat-integration/api/global/index"
       },
       "collapsed": true,
       "items": [
-        "libraries/twincat-rpc/api/global/order",
-        "libraries/twincat-rpc/api/global/ordervalue"
+        "libraries/twincat-integration/api/global/order",
+        "libraries/twincat-integration/api/global/ordervalue"
       ]
     },
     {
@@ -4406,23 +4406,23 @@ export const apiSidebars: Record<string, any[]> = {
       "label": "TechIndustry.Rpc.TwinCAT",
       "link": {
         "type": "doc",
-        "id": "libraries/twincat-rpc/api/techindustry-rpc-twincat/index"
+        "id": "libraries/twincat-integration/api/techindustry-rpc-twincat/index"
       },
       "collapsed": true,
       "items": [
-        "libraries/twincat-rpc/api/techindustry-rpc-twincat/adsclientservice",
-        "libraries/twincat-rpc/api/techindustry-rpc-twincat/adsoptions",
-        "libraries/twincat-rpc/api/techindustry-rpc-twincat/adsrouterservice",
-        "libraries/twincat-rpc/api/techindustry-rpc-twincat/asyncadsnotification",
-        "libraries/twincat-rpc/api/techindustry-rpc-twincat/iadsclientfactory",
-        "libraries/twincat-rpc/api/techindustry-rpc-twincat/invoke",
-        "libraries/twincat-rpc/api/techindustry-rpc-twincat/invoke-2",
-        "libraries/twincat-rpc/api/techindustry-rpc-twincat/invokebase",
-        "libraries/twincat-rpc/api/techindustry-rpc-twincat/request",
-        "libraries/twincat-rpc/api/techindustry-rpc-twincat/requestbase",
-        "libraries/twincat-rpc/api/techindustry-rpc-twincat/requestreply",
-        "libraries/twincat-rpc/api/techindustry-rpc-twincat/servicecollectionextensions",
-        "libraries/twincat-rpc/api/techindustry-rpc-twincat/twincatrpcexception"
+        "libraries/twincat-integration/api/techindustry-rpc-twincat/adsclientservice",
+        "libraries/twincat-integration/api/techindustry-rpc-twincat/adsoptions",
+        "libraries/twincat-integration/api/techindustry-rpc-twincat/adsrouterservice",
+        "libraries/twincat-integration/api/techindustry-rpc-twincat/asyncadsnotification",
+        "libraries/twincat-integration/api/techindustry-rpc-twincat/iadsclientfactory",
+        "libraries/twincat-integration/api/techindustry-rpc-twincat/invoke",
+        "libraries/twincat-integration/api/techindustry-rpc-twincat/invoke-2",
+        "libraries/twincat-integration/api/techindustry-rpc-twincat/invokebase",
+        "libraries/twincat-integration/api/techindustry-rpc-twincat/request",
+        "libraries/twincat-integration/api/techindustry-rpc-twincat/requestbase",
+        "libraries/twincat-integration/api/techindustry-rpc-twincat/requestreply",
+        "libraries/twincat-integration/api/techindustry-rpc-twincat/servicecollectionextensions",
+        "libraries/twincat-integration/api/techindustry-rpc-twincat/twincatrpcexception"
       ]
     },
     {
@@ -4430,14 +4430,14 @@ export const apiSidebars: Record<string, any[]> = {
       "label": "TechIndustry.Rpc.TwinCAT.Tester",
       "link": {
         "type": "doc",
-        "id": "libraries/twincat-rpc/api/techindustry-rpc-twincat-tester/index"
+        "id": "libraries/twincat-integration/api/techindustry-rpc-twincat-tester/index"
       },
       "collapsed": true,
       "items": [
-        "libraries/twincat-rpc/api/techindustry-rpc-twincat-tester/symbolmode",
-        "libraries/twincat-rpc/api/techindustry-rpc-twincat-tester/symboloption",
-        "libraries/twincat-rpc/api/techindustry-rpc-twincat-tester/symbolsoptions",
-        "libraries/twincat-rpc/api/techindustry-rpc-twincat-tester/symboltype"
+        "libraries/twincat-integration/api/techindustry-rpc-twincat-tester/symbolmode",
+        "libraries/twincat-integration/api/techindustry-rpc-twincat-tester/symboloption",
+        "libraries/twincat-integration/api/techindustry-rpc-twincat-tester/symbolsoptions",
+        "libraries/twincat-integration/api/techindustry-rpc-twincat-tester/symboltype"
       ]
     },
     {
@@ -4445,13 +4445,13 @@ export const apiSidebars: Record<string, any[]> = {
       "label": "TwinCAT.Ads",
       "link": {
         "type": "doc",
-        "id": "libraries/twincat-rpc/api/twincat-ads/index"
+        "id": "libraries/twincat-integration/api/twincat-ads/index"
       },
       "collapsed": true,
       "items": [
-        "libraries/twincat-rpc/api/twincat-ads/extensions"
+        "libraries/twincat-integration/api/twincat-ads/extensions"
       ]
     },
-    "libraries/twincat-rpc/api/twincat-plc-assets"
+    "libraries/twincat-integration/api/twincat-plc-assets"
   ]
 };

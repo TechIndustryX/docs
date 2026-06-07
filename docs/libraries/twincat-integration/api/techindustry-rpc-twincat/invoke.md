@@ -28,6 +28,14 @@ Initializes a new bound to `symbol` on `client`.
 
 ## Methods
 
+### OnInvocationAsync
+
+_method_
+
+```csharp
+Task OnInvocationAsync()
+```
+
 ### OnInvoked
 
 _method_

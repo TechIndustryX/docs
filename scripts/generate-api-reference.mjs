@@ -54,8 +54,8 @@ const repos = [
     hmi: true,
   },
   {
-    name: 'twincat-rpc',
-    title: 'TwinCAT RPC',
+    name: 'twincat-integration',
+    title: 'TwinCAT Integration',
     dotnet: ['TechIndustry.Rpc.TwinCAT/TechIndustry.Rpc.TwinCAT.sln'],
     plc: true,
   },
