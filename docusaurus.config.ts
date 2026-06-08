@@ -78,7 +78,6 @@ const config: Config = {
       items: [
         {type: 'docSidebar', sidebarId: 'mainSidebar', position: 'left', label: 'Docs'},
         {to: '/getting-started/overview', label: 'Getting Started', position: 'left'},
-        {to: '/libraries/overview', label: 'Libraries', position: 'left'},
         {href: 'https://github.com/TechIndustryX', label: 'GitHub', position: 'right'},
       ],
     },
