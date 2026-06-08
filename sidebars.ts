@@ -80,6 +80,7 @@ const libraryExamples = {
     'typed-payloads',
     'plc-structured-text-rpc',
     'plc-messaging',
+    'plc-http-client',
     'plc-mqtt-service-broker',
     'plc-signals-machine-state',
     'plc-sample-project',
