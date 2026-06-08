@@ -7,11 +7,6 @@ const cards = [
     description: 'Map the platform, install tooling, consume packages and run local services.',
     href: '/getting-started/overview',
   },
-  {
-    title: 'Libraries',
-    description: 'Read library overviews, quickstarts, examples, guides and API reference.',
-    href: '/libraries/overview',
-  },
 ];
 
 export default function Home() {
